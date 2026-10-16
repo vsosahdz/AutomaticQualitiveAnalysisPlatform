@@ -1,0 +1,7 @@
+ENTREVISTADOR: Cuéntame cómo toman las decisiones dentro de la cooperativa.
+ENTREVISTADO: El comité decide por consenso en una asamblea mensual; cada socio tiene voz y voto, y eso ordena bastante las decisiones. Cuando hay un tema urgente, convocamos una asamblea extraordinaria.
+ENTREVISTADOR: ¿Qué dificultades enfrentan hoy?
+ENTREVISTADO: La falta de financiamiento estable nos limita mucho, y los precios del transporte subieron tanto que a veces no conviene sacar el producto. El acceso al agua durante la sequía es otra barrera fuerte.
+ENTREVISTADOR: ¿Qué han hecho para sostenerse?
+ENTREVISTADO: Decidimos diversificar los cultivos de forma deliberada y armamos una caja de ahorro interna para no depender de créditos externos. También negociamos en bloque con los compradores para mejorar el precio.
+ENTREVISTADO: Nos ayudó mucho que la universidad cercana ya tenía un laboratorio de suelos abierto a la comunidad; poder usarlo sin costo facilitó ajustar la siembra.
