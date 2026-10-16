@@ -11,7 +11,10 @@ Uso:
 """
 from __future__ import annotations
 
+import json
 import os
+import re
+from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 from app.models.code import Code, CodeOrigin
@@ -42,13 +45,35 @@ GOLD: Dict[str, Dict[int, Set[str]]] = {
 CODES = ["Barrera", "Facilitador", "Estrategia"]
 
 
-def codebook() -> List[Code]:
-    """Codebook base con definiciones (mismas que usa el frontend)."""
+ROOT = Path(__file__).resolve().parent.parent
+SAMPLES_DIR = ROOT / "samples"
+# Fuente única de las definiciones base: el codebook semilla del frontend.
+CODEBOOK_TS = ROOT / "frontend" / "src" / "codebook.ts"
+
+
+def base_definitions() -> Dict[str, str]:
+    """Lee las definiciones base de ``codebook.ts`` (bloque ``BASE_DEFINITIONS``).
+
+    Así la evaluación usa exactamente las mismas definiciones que la app y no
+    pueden desincronizarse.
+    """
+    source = CODEBOOK_TS.read_text(encoding="utf-8")
+    block = re.search(r"BASE_DEFINITIONS[^{]*\{(.*?)\n\};", source, re.S)
+    if block is None:
+        raise RuntimeError(f"No se encontró BASE_DEFINITIONS en {CODEBOOK_TS}")
     defs = {
-        "Barrera": "Una barrera es cualquier condición, situación o factor que dificulta o impide que una iniciativa funcione, se sostenga en el tiempo o logre sus objetivos, por ejemplo la pérdida de conocimiento, las trabas burocráticas, el calor, la erosión del suelo o la falta de financiamiento.",
-        "Facilitador": "Un facilitador es cualquier condición, recurso o relación que de manera pasiva contribuye a que una iniciativa avance con mayor facilidad al reducir barreras, como el acceso a contactos o a recursos ya existentes que no requieren esfuerzo adicional.",
-        "Estrategia": "Es una acción que la iniciativa realiza de manera activa y deliberada para superar obstáculos o sostener su trabajo, como crear alianzas, reorganizarse, diversificar o negociar en bloque.",
+        key: json.loads(f'"{value}"')
+        for key, value in re.findall(r'(\w+):\s*"((?:[^"\\]|\\.)*)"', block.group(1))
     }
+    missing = [c for c in CODES if c.lower() not in defs]
+    if missing:
+        raise RuntimeError(f"Faltan definiciones en {CODEBOOK_TS}: {missing}")
+    return {c: defs[c.lower()] for c in CODES}
+
+
+def codebook() -> List[Code]:
+    """Codebook base con las definiciones completas que usa el frontend."""
+    defs = base_definitions()
     return [
         Code(id=c.lower(), label=c, definition=defs[c], origin=CodeOrigin.base)
         for c in CODES
@@ -97,7 +122,7 @@ def run(merge: bool) -> None:
     total = [0, 0, 0]
     print(f"\n### Modelo: {model} · merge={'on' if merge else 'off'}")
     for name, gold in GOLD.items():
-        text = open(f"../samples/{name}").read()
+        text = (SAMPLES_DIR / name).read_text(encoding="utf-8")
         pred = predicted_by_sentence(text, merge)
         tp, fp, fn = score(gold, pred)
         p, r, f = prf(tp, fp, fn)

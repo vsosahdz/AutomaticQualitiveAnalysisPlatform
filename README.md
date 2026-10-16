@@ -142,14 +142,18 @@ pytest
 ## Precision evaluation
 
 `backend/eval_precision.py` measures sentence-level precision, recall and F1 of the
-coding pipeline against a small gold standard over the transcripts in `samples/`:
+coding pipeline against a small gold standard over the transcripts in `samples/`.
+It reads the base code definitions from `frontend/src/codebook.ts`, so it evaluates
+exactly the codebook the application uses. Each model is run with and without the
+merging of same-code overlapping fragments:
 
 ```bash
 cd backend && source .venv/bin/activate
-OLLAMA_MODEL=qwen2.5:14b    python eval_precision.py
-OLLAMA_MODEL=qwen2.5:latest python eval_precision.py
+# set OLLAMA_HOST if Ollama is not on the default port (11435)
+OLLAMA_HOST=http://localhost:11434 OLLAMA_MODEL=qwen2.5:14b    python eval_precision.py
+OLLAMA_HOST=http://localhost:11434 OLLAMA_MODEL=qwen2.5:latest python eval_precision.py
 ```
 
-Note: the evaluation script uses its own abbreviated code definitions (defined in
-the script), not the full definitions the application loads from
-`frontend/src/codebook.ts`.
+## License
+
+Released under the [MIT License](LICENSE).

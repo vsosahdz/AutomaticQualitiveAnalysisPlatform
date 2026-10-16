@@ -40,7 +40,7 @@ SEMANTIC_THRESHOLD: float = float(os.getenv("SEMANTIC_THRESHOLD", "0.7"))
 # (un chatbot) y Ollama quedó en 11435. Los scripts exportan el puerto resuelto
 # (ver scripts/lib.sh · resolve_ollama_host), que tiene prioridad sobre este default.
 OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11435")
-# qwen2.5:14b da mejor precisión que el 7b en la evaluación (F1 0.83 vs 0.75);
+# qwen2.5:14b da mejor precisión que el 7b en la evaluación (F1 0.96 vs 0.87);
 # es el modelo por defecto. Para un arranque más ligero/rápido, sobreescribe con
 # OLLAMA_MODEL=qwen2.5:latest (7b) en backend/.env.
 OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
