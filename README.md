@@ -3,23 +3,23 @@
 LLM-assisted qualitative coding of interview transcripts. The platform takes
 Spanish-language interview transcripts (`.txt`) and, using a **local LLM served by
 [Ollama](https://ollama.com)**, identifies the fragments that match a codebook
-(three base codes — *Barrera* / Barrier, *Facilitador* / Facilitator,
-*Estrategia* / Strategy — plus up to three user-defined codes). Results are shown
+made of three base codes (*Barrera* / Barrier, *Facilitador* / Facilitator,
+*Estrategia* / Strategy) plus up to three user-defined codes. Results are shown
 in a color-highlighted viewer and can be exported as CSV.
 
 > The user interface, the prompt and the codebook are in Spanish.
 
 ## How it works
 
-1. **Segmentation** — each transcript is split into sentence units with exact
+1. **Segmentation.** Each transcript is split into sentence units with exact
    character offsets (`backend/app/services/segmentation.py`).
-2. **Windowing** — long documents are processed in overlapping windows
+2. **Windowing.** Long documents are processed in overlapping windows
    (6000 characters, 500 overlap) that keep global unit IDs.
-3. **Coding** — each window is sent to the LLM with the active codebook. The model
+3. **Coding.** Each window is sent to the LLM with the active codebook. The model
    answers with unit-ID ranges, a code and a justification, constrained by a JSON
    Schema whose `code` field is an enum of the active labels
    (`backend/app/services/llm/base.py`).
-4. **Validation** — unknown codes and out-of-range IDs are discarded and logged;
+4. **Validation.** Unknown codes and out-of-range IDs are discarded and logged;
    IDs are resolved to exact offsets, and duplicate or nested ranges of the same
    code are merged (`backend/app/services/coding.py`).
 
