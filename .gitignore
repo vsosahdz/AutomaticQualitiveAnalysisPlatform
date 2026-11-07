@@ -1,0 +1,26 @@
+# --- Backend (Python) ---
+backend/.venv/
+backend/**/__pycache__/
+**/__pycache__/
+*.py[cod]
+backend/.env
+
+# --- Frontend (Node) ---
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# --- Logs y PIDs de los scripts ---
+.logs/
+
+# --- Entornos y editores ---
+.env
+.DS_Store
+.vscode/
+.idea/
+
+# Artefacto de build de TypeScript
+frontend/*.tsbuildinfo
+
+# Exportación local del chat (no versionar)
+docs/chat-export.txt
