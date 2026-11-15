@@ -2,6 +2,7 @@
 // y reglas de validación. El codebook vive en memoria (sin persistencia) y se
 // envía completo en cada petición.
 import type { Code } from "./types";
+import { t } from "./i18n";
 
 /** Máximo de códigos custom (espejo de MAX_CUSTOM_CODES del backend). */
 export const MAX_CUSTOM_CODES = 3;
@@ -111,17 +112,17 @@ export function validateCode(
   editingId?: string
 ): CodeValidation {
   const name = label.trim();
-  if (!name) return { ok: false, error: "El nombre es obligatorio." };
+  if (!name) return { ok: false, error: t("code.nameRequired") };
 
   // Nombre único sin distinguir mayúsculas/minúsculas.
   const clash = codebook.some(
     (c) => c.id !== editingId && c.label.trim().toLowerCase() === name.toLowerCase()
   );
-  if (clash) return { ok: false, error: "Ya existe un código con ese nombre." };
+  if (clash) return { ok: false, error: t("code.nameTaken") };
 
   // Un código custom requiere definición.
   if (!definition.trim())
-    return { ok: false, error: "La definición es obligatoria para códigos custom." };
+    return { ok: false, error: t("code.definitionRequired") };
 
   return { ok: true };
 }

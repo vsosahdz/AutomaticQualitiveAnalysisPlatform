@@ -1,0 +1,94 @@
+{
+  "aqa": {
+    "tool": "Análisis Cualitativo Automático",
+    "version": "0.1.0",
+    "kind": "aqa-analysis-export"
+  },
+  "document": {
+    "name": "entrevista_01.txt",
+    "full_text": "ENTREVISTADOR: ¿Cuáles fueron los principales obstáculos al arrancar la iniciativa?\nENTREVISTADO: Al inicio, las trabas burocráticas nos frenaron muchísimo; conseguir los permisos tardó casi un año. Además, la pérdida de conocimiento cuando se fue parte del equipo fundador fue un golpe duro para la operación.\nENTREVISTADOR: ¿Y cómo lograron avanzar a pesar de eso?\nENTREVISTADO: Para avanzar, creamos alianzas con otros actores de la comunidad y reorganizamos el trabajo por temporadas según la disponibilidad de la gente. También desarrollamos un sistema de comunicación por radio para coordinarnos en la zona alta.\nENTREVISTADOR: ¿Hubo algo del contexto que les ayudara sin tener que esforzarse tanto?\nENTREVISTADO: Sí, tener contactos que ya usaban la bodega municipal nos facilitó mucho la operación, porque el espacio ya existía y no tuvimos que invertir en almacenamiento. Eso fue clave.\nENTREVISTADO: Aun así, el calor extremo del verano sigue siendo un problema serio para la conservación de la cosecha, y la erosión del suelo nos preocupa cada año más.\n",
+    "fragments": [
+      {
+        "start": 84,
+        "end": 198,
+        "code": "Barrera",
+        "quote": "ENTREVISTADO: Al inicio, las trabas burocráticas nos frenaron muchísimo; conseguir los permisos tardó casi un año.",
+        "justification": "Las trabas burocráticas retrasaron los permisos, obstaculizando la puesta en marcha: un factor que impide operar con normalidad.",
+        "models": [],
+        "origin": "llm",
+        "original": null
+      },
+      {
+        "start": 199,
+        "end": 310,
+        "code": "Barrera",
+        "quote": "Además, la pérdida de conocimiento cuando se fue parte del equipo fundador fue un golpe duro para la operación.",
+        "justification": "La pérdida de conocimiento cuando se fue parte del equipo fundador dificultó la operación, afectando directamente su funcionamiento interno.",
+        "models": [],
+        "origin": "llm",
+        "original": null
+      },
+      {
+        "start": 367,
+        "end": 618,
+        "code": "Estrategia",
+        "quote": "ENTREVISTADO: Para avanzar, creamos alianzas con otros actores de la comunidad y reorganizamos el trabajo por temporadas según la disponibilidad de la gente. También desarrollamos un sistema de comunicación por radio para coordinarnos en la zona alta.",
+        "justification": "Crear alianzas con otros actores y reorganizar el trabajo por temporadas son acciones deliberadas para superar obstáculos y lograr resultados esperados.",
+        "models": [],
+        "origin": "llm",
+        "original": null
+      },
+      {
+        "start": 706,
+        "end": 895,
+        "code": "Facilitador",
+        "quote": "ENTREVISTADO: Sí, tener contactos que ya usaban la bodega municipal nos facilitó mucho la operación, porque el espacio ya existía y no tuvimos que invertir en almacenamiento. Eso fue clave.",
+        "justification": "Tener contactos que usaban la bodega municipal facilitó la operación sin esfuerzo adicional, ya que el espacio ya existía y no hubo necesidad de invertir en almacenamiento.",
+        "models": [],
+        "origin": "llm",
+        "original": null
+      },
+      {
+        "start": 896,
+        "end": 1063,
+        "code": "Barrera",
+        "quote": "ENTREVISTADO: Aun así, el calor extremo del verano sigue siendo un problema serio para la conservación de la cosecha, y la erosión del suelo nos preocupa cada año más.",
+        "justification": "El calor extremo del verano y la erosión del suelo son problemas que dificultan la conservación de la cosecha y preocupan cada año más, afectando negativamente los procesos y resultados.",
+        "models": [],
+        "origin": "llm",
+        "original": null
+      }
+    ],
+    "elapsed_seconds": 46.6,
+    "removed_fragments": []
+  },
+  "codebook": [
+    {
+      "id": "barrera",
+      "label": "Barrera",
+      "definition": "Una barrera es cualquier condición, situación o factor que dificulta o impide que una iniciativa funcione adecuadamente, se sostenga en el tiempo, desarrolle sus actividades o logre sus objetivos, afectando de manera negativa sus procesos, resultados o continuidad, por ejemplo, la pérdida de conocimiento, las trabas burocráticas, el calor, la erosión del suelo. Se diferencian de los problemas que la iniciativa busca resolver, ya que estos no necesariamente afectan directamente su funcionamiento interno.",
+      "examples": [],
+      "color": "#E4572E",
+      "origin": "base",
+      "active": true
+    },
+    {
+      "id": "facilitador",
+      "label": "Facilitador",
+      "definition": "Un facilitador es cualquier condición, recurso, relación o aspecto del contexto que, de manera pasiva, contribuye a que una iniciativa pueda avanzar, operar, sostenerse en el tiempo y cumplir sus objetivos con mayor facilidad, al reducir barreras y simplificar procesos sin requerir esfuerzos adicionales significativos ni el desarrollo de nuevas estrategias; se trata de factores ya existentes o que se dan naturalmente y que actúan como soporte indirecto, idealmente replicables y accionables en otros contextos, como el acceso a contactos que permiten el uso de recursos, y que se distinguen de las oportunidades —que implican situaciones externas que deben aprovecharse estratégicamente— y de las casualidades —que son eventos fortuitos no estructurales.",
+      "examples": [],
+      "color": "#2E933C",
+      "origin": "base",
+      "active": true
+    },
+    {
+      "id": "estrategia",
+      "label": "Estrategia",
+      "definition": "Es una acción que una iniciativa realiza de manera activa y deliberada para superar obstáculos, resolver problemas, lograr resultados esperados, cumplir sus objetivos o sostener su trabajo en el tiempo; implica decisiones pensadas y organizadas que responden a necesidades concretas, como crear alianzas con otros actores, desarrollar formas de comunicación ante situaciones específicas, reorganizarse frente a dificultades. Se caracteriza por surgir de la intención y la planificación de la propia iniciativa, no de factores externos, casualidades o acciones de terceros.",
+      "examples": [],
+      "color": "#3A6EA5",
+      "origin": "base",
+      "active": true
+    }
+  ]
+}

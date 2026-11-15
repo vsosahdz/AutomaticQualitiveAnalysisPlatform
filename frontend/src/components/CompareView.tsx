@@ -1,8 +1,10 @@
-// Pestaña "Comparar" (Fase II): carga la codificación del LLM (JSON exportado) y
-// la humana (CSV/XLSX), ejecuta POST /compare y muestra métricas léxicas,
-// hallazgos semánticos (solo-IA por novedad, solo-humano) con su cita más
-// parecida del otro lado, permite marcar la relevancia de los hallazgos solo-IA
-// y exportar el reporte (JSON/CSV). Incluye un diff por oración.
+// Pestaña "Comparar". Dos modos:
+// - "Humano vs LLM" (Fase II): carga la codificación del LLM (JSON exportado) y
+//   la humana (CSV/XLSX), ejecuta POST /compare y muestra métricas léxicas,
+//   hallazgos semánticos (solo-IA por novedad, solo-humano) con su cita más
+//   parecida del otro lado, permite marcar la relevancia de los hallazgos solo-IA
+//   y exportar el reporte (JSON/CSV/DOCX). Incluye un diff por oración.
+// - "A vs B": compara dos codificaciones cualesquiera (ver PairCompareView).
 import { useMemo, useRef, useState } from "react";
 import type {
   Code,
@@ -14,26 +16,31 @@ import type {
   UnitDiff,
 } from "../types";
 import { ApiError, compareCodings, humanSummary, reportDocx } from "../api";
-import { parseAqaExport } from "../aqaFile";
+import { AQA_TOOL, AQA_VERSION, parseAqaExport } from "../aqaFile";
 import { csvRow, downloadBlob, downloadText } from "../download";
+import {
+  belowThreshold,
+  contextAround,
+  countByCode,
+  CountsTable,
+  DiffView,
+  FindingItem,
+  ThresholdControl,
+  type DiffStatus,
+} from "./compareParts";
+import { PairCompareView } from "./PairCompareView";
+import { useI18n, type MessageKey } from "../i18n";
 
-/** Colores del diff por estado de acuerdo. */
-const STATUS_COLOR: Record<string, string> = {
-  agree: "#2E933C",
-  only_human: "#E4572E",
-  only_llm: "#3A6EA5",
-  partial: "#C9A227",
-};
+/** Estados del diff humano vs LLM con la clave de su etiqueta y su color. */
+const DIFF_STATUSES: Array<[string, MessageKey, string]> = [
+  ["agree", "diff.agree", "#2E933C"],
+  ["only_llm", "diff.onlyLlm", "#3A6EA5"],
+  ["only_human", "diff.onlyHuman", "#E4572E"],
+  ["partial", "diff.partial", "#C9A227"],
+];
 
 /** Marca que identifica un archivo de comparación guardado por la herramienta. */
 const AQA_COMPARISON_KIND = "aqa-comparison-export";
-
-/** Códigos de interés (se resaltan) con su color. */
-const CODES_OF_INTEREST: Array<[string, string]> = [
-  ["Barrera", "#E4572E"],
-  ["Facilitador", "#2E933C"],
-  ["Estrategia", "#3A6EA5"],
-];
 
 /** Relevancia marcada por la persona para un hallazgo solo-IA. */
 type Relevance = "relevant" | "no";
@@ -41,34 +48,6 @@ type Relevance = "relevant" | "no";
 /** Clave estable de un hallazgo (documento + span + código). */
 function findingKey(docName: string, f: FragmentSim): string {
   return `${docName}|${f.start}-${f.end}|${f.code}`;
-}
-
-/** Devuelve el texto que rodea la cita en el documento, con la cita marcada «…». */
-function contextAround(fullText: string, start: number, end: number, pad = 220): string {
-  let a = Math.max(0, start - pad);
-  let b = Math.min(fullText.length, end + pad);
-  // Ajusta a límites de palabra para no cortar a mitad.
-  if (a > 0) {
-    const sp = fullText.indexOf(" ", a);
-    if (sp !== -1 && sp < start) a = sp + 1;
-  }
-  if (b < fullText.length) {
-    const sp = fullText.lastIndexOf(" ", b);
-    if (sp !== -1 && sp > end) b = sp;
-  }
-  const before = fullText.slice(a, start);
-  const quote = fullText.slice(start, end);
-  const after = fullText.slice(end, b);
-  return (
-    (a > 0 ? "… " : "") + before + "«" + quote + "»" + after + (b < fullText.length ? " …" : "")
-  );
-}
-
-/** Cuenta elementos por código (fragmentos con `.code`). */
-function countByCode(items: { code: string }[]): Record<string, number> {
-  const c: Record<string, number> = {};
-  for (const it of items) c[it.code] = (c[it.code] ?? 0) + 1;
-  return c;
 }
 
 /** Cuenta las oraciones por estado de acuerdo del diff. */
@@ -80,7 +59,47 @@ function countStatuses(units: UnitDiff[]) {
   return c;
 }
 
+type CompareMode = "human-llm" | "ab";
+
 export function CompareView() {
+  const [mode, setMode] = useState<CompareMode>("human-llm");
+  const { t } = useI18n();
+  return (
+    <div>
+      <div className="panel compare-mode">
+        <span className="group-label">{t("compare.mode")}</span>
+        <label>
+          <input
+            type="radio"
+            name="compare-mode"
+            checked={mode === "human-llm"}
+            onChange={() => setMode("human-llm")}
+          />
+          {t("compare.modeHumanLlm")}
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="compare-mode"
+            checked={mode === "ab"}
+            onChange={() => setMode("ab")}
+          />
+          {t("compare.modeAb")}
+        </label>
+      </div>
+      {/* Ambos modos quedan montados para conservar su estado. */}
+      <div hidden={mode !== "human-llm"}>
+        <HumanLlmCompare />
+      </div>
+      <div hidden={mode !== "ab"}>
+        <PairCompareView />
+      </div>
+    </div>
+  );
+}
+
+function HumanLlmCompare() {
+  const { lang, t } = useI18n();
   const [llmDocs, setLlmDocs] = useState<CodedDocument[]>([]);
   const [llmCodebook, setLlmCodebook] = useState<Code[]>([]);
   const [humanFile, setHumanFile] = useState<File | null>(null);
@@ -108,7 +127,7 @@ export function CompareView() {
         for (const c of parsed.codebook ?? []) if (!codebook.has(c.label)) codebook.set(c.label, c);
       } else bad.push(f.name);
     }
-    setError(bad.length ? `No son JSON válidos: ${bad.join(", ")}` : undefined);
+    setError(bad.length ? t("hl.invalidJson", { files: bad.join(", ") }) : undefined);
     if (docs.length) {
       setLlmDocs(docs);
       setLlmCodebook(Array.from(codebook.values()));
@@ -123,7 +142,7 @@ export function CompareView() {
     try {
       setHumanCounts(await humanSummary(file));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo leer el archivo humano");
+      setError(err instanceof ApiError ? err.message : t("hl.humanReadError"));
     }
   }
 
@@ -170,7 +189,7 @@ export function CompareView() {
       setThreshold(res.default_threshold);
       setActiveDoc(0);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al comparar");
+      setError(err instanceof ApiError ? err.message : t("compare.error"));
     } finally {
       setBusy(false);
     }
@@ -191,7 +210,7 @@ export function CompareView() {
   function saveComparison() {
     if (!result) return;
     const payload = {
-      aqa: { tool: "Análisis Cualitativo Automático", version: "0.1.0", kind: AQA_COMPARISON_KIND },
+      aqa: { tool: AQA_TOOL, version: AQA_VERSION, kind: AQA_COMPARISON_KIND },
       threshold,
       relevance,
       result,
@@ -210,7 +229,7 @@ export function CompareView() {
     try {
       const data = JSON.parse(await files[0].text());
       if (data?.aqa?.kind !== AQA_COMPARISON_KIND || !data.result) {
-        setError("El archivo no es una comparación válida guardada por la herramienta.");
+        setError(t("hl.invalidSaved"));
         return;
       }
       setResult(data.result as ComparisonResult);
@@ -218,7 +237,7 @@ export function CompareView() {
       setRelevance(data.relevance ?? {});
       setActiveDoc(0);
     } catch {
-      setError("No se pudo leer el archivo de comparación (¿JSON válido?).");
+      setError(t("compare.readError"));
     }
   }
 
@@ -280,24 +299,32 @@ export function CompareView() {
       const blob = await reportDocx(payload);
       downloadBlob(blob, "hallazgos_IA_AQA.docx");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al generar el DOCX");
+      setError(err instanceof ApiError ? err.message : t("hl.docxError"));
     }
   }
 
   return (
     <div>
       <div className="panel">
-        <h2>Comparar humano vs LLM</h2>
-        <p className="hint">
-          Carga la codificación del <strong>LLM</strong> (JSON exportado por la
-          herramienta) y la codificación <strong>humana</strong> (CSV o XLSX con
-          columnas <em>document, quotation, codes, comment</em>) del mismo documento.
-        </p>
+        <h2>{t("hl.title")}</h2>
+        {lang === "es" ? (
+          <p className="hint">
+            Carga la codificación del <strong>LLM</strong> (JSON exportado por la
+            herramienta) y la codificación <strong>humana</strong> (CSV o XLSX con
+            columnas <em>document, quotation, codes, comment</em>) del mismo documento.
+          </p>
+        ) : (
+          <p className="hint">
+            Load the <strong>LLM</strong> coding (JSON exported by the tool) and the{" "}
+            <strong>human</strong> coding (CSV or XLSX with the columns{" "}
+            <em>document, quotation, codes, comment</em>) of the same document.
+          </p>
+        )}
 
         <div className="compare-inputs">
           <div>
             <button className="button" onClick={() => llmInput.current?.click()}>
-              Cargar codificación LLM (JSON)
+              {t("hl.loadLlm")}
             </button>
             <input
               ref={llmInput}
@@ -308,13 +335,13 @@ export function CompareView() {
               onChange={(e) => loadLlm(e.target.files)}
             />
             <span className="meta">
-              {llmDocs.length > 0 ? ` ${llmDocs.length} documento(s)` : " ninguno"}
+              {llmDocs.length > 0 ? t("common.docs", { n: llmDocs.length }) : t("common.none")}
             </span>
           </div>
 
           <div>
             <label className="button">
-              Cargar codificación humana (CSV/XLSX)
+              {t("hl.loadHuman")}
               <input
                 type="file"
                 accept=".csv,.xlsx"
@@ -322,7 +349,7 @@ export function CompareView() {
                 onChange={(e) => onHumanFile(e.target.files?.[0] ?? null)}
               />
             </label>
-            <span className="meta">{humanFile ? ` ${humanFile.name}` : " ninguno"}</span>
+            <span className="meta">{humanFile ? ` ${humanFile.name}` : t("common.none")}</span>
           </div>
 
           <button
@@ -330,13 +357,13 @@ export function CompareView() {
             disabled={busy || llmDocs.length === 0 || !humanFile}
             onClick={runCompare}
           >
-            {busy ? "Comparando…" : "▶ Comparar"}
+            {busy ? t("compare.comparing") : t("compare.run")}
           </button>
 
           <div className="compare-load">
-            <span className="meta">o cargar una comparación guardada:</span>
+            <span className="meta">{t("hl.orLoad")}</span>
             <label className="button">
-              Cargar comparación (JSON)
+              {t("compare.loadSaved")}
               <input
                 type="file"
                 accept=".json,application/json"
@@ -350,14 +377,14 @@ export function CompareView() {
         {error && <p className="error">{error}</p>}
         {result && result.unmapped.length > 0 && (
           <p className="dropped-note">
-            {result.unmapped.length} cita(s) humana(s) no se encontraron en el texto.
+            {t("hl.unmapped", { n: result.unmapped.length })}
           </p>
         )}
         {result && (
           <div className="result-actions">
-            <button className="button" onClick={exportDocx}>⬇ Hallazgos IA (DOCX)</button>
-            <button className="button" onClick={saveComparison}>⬇ Guardar comparación (JSON)</button>
-            <button className="button" onClick={exportCsv}>↓ Hallazgos (CSV)</button>
+            <button className="button" onClick={exportDocx}>{t("hl.docx")}</button>
+            <button className="button" onClick={saveComparison}>{t("compare.save")}</button>
+            <button className="button" onClick={exportCsv}>{t("compare.csv")}</button>
           </div>
         )}
       </div>
@@ -405,63 +432,32 @@ interface CountsPanelProps {
 
 /** Panel con el conteo de citas por código (humano vs LLM), resaltando los 3 de interés. */
 function CountsPanel({ human, llm, hasLlm }: CountsPanelProps) {
-  const interest = CODES_OF_INTEREST.map(([c]) => c);
-  // Códigos de interés primero (en orden), luego el resto presente en cualquier lado.
-  const others = Array.from(
-    new Set([...Object.keys(human.by_code), ...Object.keys(llm)])
-  )
-    .filter((c) => !interest.includes(c))
-    .sort();
-  const rows = [...interest, ...others];
-  const colorOf = (c: string) => CODES_OF_INTEREST.find(([x]) => x === c)?.[1];
-
+  const { lang, t } = useI18n();
+  const docs = human.documents.length;
   return (
     <div className="panel">
-      <h3>Conteo de citas por código</h3>
-      <p className="meta">
-        Codificación humana: <strong>{human.total}</strong> citas
-        {human.documents.length > 0 && ` · ${human.documents.length} documento(s)`}
-        {hasLlm && " · comparado con las citas del/los LLM cargados"}.
-      </p>
-      <div className="table-scroll">
-        <table className="metrics-table counts-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Humano</th>
-              {hasLlm && <th>LLM</th>}
-              {hasLlm && <th>Δ (LLM − Humano)</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((code) => {
-              const h = human.by_code[code] ?? 0;
-              const l = llm[code] ?? 0;
-              if (h === 0 && l === 0) return null;
-              const color = colorOf(code);
-              return (
-                <tr key={code} className={color ? "interest" : ""}>
-                  <td style={color ? { borderLeft: `4px solid ${color}` } : undefined}>
-                    {color && <span className="swatch" style={{ background: color }} />}
-                    {code}
-                  </td>
-                  <td>{h}</td>
-                  {hasLlm && <td>{l}</td>}
-                  {hasLlm && (
-                    <td className={l - h > 0 ? "delta-pos" : l - h < 0 ? "delta-neg" : ""}>
-                      {l - h > 0 ? `+${l - h}` : l - h}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {!hasLlm && (
+      <h3>{t("compare.countsTitle")}</h3>
+      {lang === "es" ? (
         <p className="meta">
-          Carga la codificación del LLM (arriba) para ver la comparativa lado a lado.
+          Codificación humana: <strong>{human.total}</strong> citas
+          {docs > 0 && ` · ${docs} documento(s)`}
+          {hasLlm && " · comparado con las citas del/los LLM cargados"}.
         </p>
+      ) : (
+        <p className="meta">
+          Human coding: <strong>{human.total}</strong> quotations
+          {docs > 0 && ` · ${docs} document(s)`}
+          {hasLlm && " · compared with the quotations of the loaded LLM coding(s)"}.
+        </p>
+      )}
+      <CountsTable
+        leftLabel={t("hl.human")}
+        left={human.by_code}
+        rightLabel={hasLlm ? "LLM" : undefined}
+        right={hasLlm ? llm : undefined}
+      />
+      {!hasLlm && (
+        <p className="meta">{t("hl.loadLlmForCounts")}</p>
       )}
     </div>
   );
@@ -480,32 +476,17 @@ interface ReportProps {
 function ComparisonReport({
   doc, threshold, onThreshold, embeddingModel, relevance, onMark,
 }: ReportProps) {
-  const onlyAi = useMemo(
-    () => doc.llm_fragments.filter((f) => f.max_similarity < threshold)
-      .sort((a, b) => a.max_similarity - b.max_similarity),
-    [doc, threshold]
-  );
+  const onlyAi = useMemo(() => belowThreshold(doc.llm_fragments, threshold), [doc, threshold]);
   const onlyHuman = useMemo(
-    () => doc.human_fragments.filter((f) => f.max_similarity < threshold)
-      .sort((a, b) => a.max_similarity - b.max_similarity),
+    () => belowThreshold(doc.human_fragments, threshold),
     [doc, threshold]
   );
-  const diffCounts = useMemo(() => countStatuses(doc.units), [doc]);
-  // Estados del diff visibles (todos por defecto). Debe quedar al menos uno.
-  const [visibleStatuses, setVisibleStatuses] = useState<Set<string>>(
-    () => new Set(["agree", "only_llm", "only_human", "partial"])
+  const diffUnits = useMemo(
+    () => doc.units.map((u) => ({ text: u.text, left: u.human, right: u.llm, status: u.status })),
+    [doc]
   );
-  function toggleStatus(s: string) {
-    setVisibleStatuses((prev) => {
-      const next = new Set(prev);
-      if (next.has(s)) {
-        if (next.size > 1) next.delete(s); // no permitir desmarcar el último
-      } else {
-        next.add(s);
-      }
-      return next;
-    });
-  }
+  const { lang, t } = useI18n();
+  const statuses: DiffStatus[] = DIFF_STATUSES.map(([k, key, c]) => [k, t(key), c]);
   const relevantCount = onlyAi.filter(
     (f) => relevance[findingKey(doc.name, f)] === "relevant"
   ).length;
@@ -515,19 +496,19 @@ function ComparisonReport({
     <div className="compare-report">
       <h3>{doc.name}</h3>
 
-      <h4>Acuerdo léxico (humano = referencia)</h4>
+      <h4>{t("hl.lexical")}</h4>
       <div className="table-scroll">
         <table className="metrics-table">
           <thead>
             <tr>
-              <th>Código</th>
-              <th title="Precisión">P</th>
-              <th title="Recall (sensibilidad)">R</th>
-              <th title="F1: media armónica de P y R">F1</th>
-              <th title="Cohen's kappa: acuerdo corregido por azar">κ</th>
-              <th title="Verdaderos positivos">TP</th>
-              <th title="Falsos positivos">FP</th>
-              <th title="Falsos negativos">FN</th>
+              <th>{t("common.code")}</th>
+              <th title={t("hl.precision")}>P</th>
+              <th title={t("hl.recall")}>R</th>
+              <th title={t("hl.f1")}>F1</th>
+              <th title={t("metric.kappaTitle")}>κ</th>
+              <th title={t("hl.tp")}>TP</th>
+              <th title={t("hl.fp")}>FP</th>
+              <th title={t("hl.fn")}>FN</th>
             </tr>
           </thead>
           <tbody>
@@ -552,126 +533,81 @@ function ComparisonReport({
           </tbody>
         </table>
       </div>
-      <p className="metrics-legend">
-        <strong>P</strong> = Precisión (de lo que marcó el LLM, cuánto coincidió) ·{" "}
-        <strong>R</strong> = Recall (de lo que marcó la persona, cuánto encontró el LLM) ·{" "}
-        <strong>F1</strong> = media armónica de P y R ·{" "}
-        <strong>κ</strong> = Cohen's kappa (acuerdo corregido por azar) ·{" "}
-        <strong>TP</strong> = verdaderos positivos ·{" "}
-        <strong>FP</strong> = falsos positivos ·{" "}
-        <strong>FN</strong> = falsos negativos.
-      </p>
+      {lang === "es" ? (
+        <p className="metrics-legend">
+          <strong>P</strong> = Precisión (de lo que marcó el LLM, cuánto coincidió) ·{" "}
+          <strong>R</strong> = Recall (de lo que marcó la persona, cuánto encontró el LLM) ·{" "}
+          <strong>F1</strong> = media armónica de P y R ·{" "}
+          <strong>κ</strong> = Cohen's kappa (acuerdo corregido por azar) ·{" "}
+          <strong>TP</strong> = verdaderos positivos ·{" "}
+          <strong>FP</strong> = falsos positivos ·{" "}
+          <strong>FN</strong> = falsos negativos.
+        </p>
+      ) : (
+        <p className="metrics-legend">
+          <strong>P</strong> = Precision (of what the LLM marked, how much matched) ·{" "}
+          <strong>R</strong> = Recall (of what the person marked, how much the LLM found) ·{" "}
+          <strong>F1</strong> = harmonic mean of P and R ·{" "}
+          <strong>κ</strong> = Cohen's kappa (chance-corrected agreement) ·{" "}
+          <strong>TP</strong> = true positives ·{" "}
+          <strong>FP</strong> = false positives ·{" "}
+          <strong>FN</strong> = false negatives.
+        </p>
+      )}
 
-      <h4>Similitud semántica (embeddings: {embeddingModel})</h4>
-      <label className="threshold-control">
-        Umbral de "mismo hallazgo": <strong>{threshold.toFixed(2)}</strong>
-        <input
-          type="range" min={0} max={1} step={0.05} value={threshold}
-          onChange={(e) => onThreshold(Number(e.target.value))}
-        />
-      </label>
+      <h4>{t("compare.semantic", { model: embeddingModel })}</h4>
+      <ThresholdControl value={threshold} onChange={onThreshold} />
 
       <div className="findings">
         <div className="finding-col">
           <h4 className="only-ai">
-            ★ Hallazgos solo-IA ({onlyAi.length}) · relevantes: {relevantCount}
+            {t("hl.onlyAi", { n: onlyAi.length, r: relevantCount })}
           </h4>
-          <p className="meta">Ordenados por novedad; marca su relevancia.</p>
+          <p className="meta">{t("hl.onlyAiHint")}</p>
           <ul className="finding-list">
             {onlyAi.map((f, i) => {
               const rel = relevance[findingKey(doc.name, f)];
               return (
-                <li key={i}>
-                  <span className="tag">{f.code}</span>
-                  <span className="sim">sim {f.max_similarity.toFixed(2)}</span>
-                  <div className="finding-quote">“{f.quote}”</div>
-                  {f.justification && <div className="finding-just">{f.justification}</div>}
-                  {f.best_match_quote && (
-                    <div className="finding-match">
-                      ≈ más parecido (humano): “{f.best_match_quote}” [{f.best_match_code}]
-                    </div>
-                  )}
+                <FindingItem key={i} finding={f} otherLabel={t("hl.humanLower")}>
                   <div className="relevance-buttons">
                     <button
                       className={rel === "relevant" ? "rel-yes active" : "rel-yes"}
                       onClick={() => onMark(doc.name, f, "relevant")}
                     >
-                      ✓ Relevante
+                      {t("hl.relevant")}
                     </button>
                     <button
                       className={rel === "no" ? "rel-no active" : "rel-no"}
                       onClick={() => onMark(doc.name, f, "no")}
                     >
-                      ✗ No
+                      {t("hl.notRelevant")}
                     </button>
                   </div>
-                </li>
+                </FindingItem>
               );
             })}
-            {onlyAi.length === 0 && <li className="meta">Ninguno bajo el umbral.</li>}
+            {onlyAi.length === 0 && <li className="meta">{t("compare.noneBelow")}</li>}
           </ul>
         </div>
 
         <div className="finding-col">
-          <h4 className="only-human">Hallazgos solo-humano ({onlyHuman.length})</h4>
-          <p className="meta">Lo que el LLM no capturó.</p>
+          <h4 className="only-human">{t("hl.onlyHuman", { n: onlyHuman.length })}</h4>
+          <p className="meta">{t("hl.onlyHumanHint")}</p>
           <ul className="finding-list">
             {onlyHuman.map((f, i) => (
-              <li key={i}>
-                <span className="tag">{f.code}</span>
-                <span className="sim">sim {f.max_similarity.toFixed(2)}</span>
-                <div className="finding-quote">“{f.quote}”</div>
-                {f.comment && <div className="finding-just">💬 {f.comment}</div>}
-                {f.best_match_quote && (
-                  <div className="finding-match">
-                    ≈ más parecido (LLM): “{f.best_match_quote}” [{f.best_match_code}]
-                  </div>
-                )}
-              </li>
+              <FindingItem key={i} finding={f} otherLabel="LLM" />
             ))}
-            {onlyHuman.length === 0 && <li className="meta">Ninguno bajo el umbral.</li>}
+            {onlyHuman.length === 0 && <li className="meta">{t("compare.noneBelow")}</li>}
           </ul>
         </div>
       </div>
 
-      <h4>Diff por oración</h4>
-      <p className="meta">Marca los estados a resaltar (al menos uno).</p>
-      <div className="diff-summary">
-        {([
-          ["agree", "acuerdo"],
-          ["only_llm", "solo LLM"],
-          ["only_human", "solo humano"],
-          ["partial", "parcial"],
-        ] as const).map(([s, label]) => (
-          <label key={s} className="stat" style={{ borderColor: STATUS_COLOR[s] }}>
-            <input
-              type="checkbox"
-              checked={visibleStatuses.has(s)}
-              onChange={() => toggleStatus(s)}
-            />
-            <b>{diffCounts[s]}</b> {label}
-          </label>
-        ))}
-      </div>
-      <p className="viewer-text">
-        {doc.units.map((u, i) => {
-          // Texto plano si no está codificada o su estado está oculto por el filtro.
-          if (u.status === "none" || !visibleStatuses.has(u.status)) {
-            return <span key={i}>{u.text} </span>;
-          }
-          const color = STATUS_COLOR[u.status] ?? "#999";
-          return (
-            <mark
-              key={i}
-              className="hl"
-              style={{ backgroundColor: color + "44" }}
-              title={`humano: ${u.human.join(", ") || "—"} | LLM: ${u.llm.join(", ") || "—"}`}
-            >
-              {u.text}{" "}
-            </mark>
-          );
-        })}
-      </p>
+      <DiffView
+        units={diffUnits}
+        statuses={statuses}
+        leftLabel={t("hl.humanLower")}
+        rightLabel="LLM"
+      />
     </div>
   );
 }

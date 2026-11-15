@@ -46,6 +46,17 @@ export interface ModelsResponse {
   default: string;
 }
 
+/** Origen de un fragmento: del análisis, editado por una persona o agregado a mano. */
+export type FragmentOrigin = "llm" | "editado" | "manual";
+
+/** Valores del análisis automático de un fragmento antes de editarlo. */
+export interface OriginalValues {
+  start: number;
+  end: number;
+  code: string;
+  justification: string;
+}
+
 /** Un fragmento codificado con offsets exactos sobre el texto original. */
 export interface Fragment {
   start: number;
@@ -55,6 +66,10 @@ export interface Fragment {
   justification: string;
   /** Modelos que coincidieron (solo en análisis por consenso). */
   models?: string[];
+  /** Origen del fragmento; ausente en JSON antiguos (equivale a "llm"). */
+  origin?: FragmentOrigin;
+  /** Valores antes de editar (solo si origin = "editado"). */
+  original?: OriginalValues | null;
 }
 
 /** Un documento codificado. */
@@ -64,6 +79,8 @@ export interface CodedDocument {
   fragments: Fragment[];
   /** Segundos que tomó codificar este documento. */
   elapsed_seconds?: number;
+  /** Fragmentos del análisis que una persona eliminó al editar. */
+  removed_fragments?: Fragment[];
 }
 
 /** Registro de una salida del LLM descartada por inválida. */
@@ -154,6 +171,61 @@ export interface ComparisonResult {
   embedding_model: string;
   default_threshold: number;
   unmapped: string[];
+}
+
+// --- Comparación A vs B (dos codificaciones cualesquiera) ---
+
+/** Métricas simétricas de un código (ningún lado es la referencia). */
+export interface PairCodeMetric {
+  code: string;
+  both: number;
+  only_a: number;
+  only_b: number;
+  neither: number;
+  kappa: number | null;
+  observed_agreement: number | null;
+  positive_agreement: number | null;
+}
+
+/** Métricas simétricas globales. */
+export interface PairOverallMetrics {
+  kappa: number | null;
+  observed_agreement: number | null;
+  positive_agreement: number | null;
+}
+
+/** Diff por oración entre A y B. */
+export interface PairUnitDiff {
+  start: number;
+  end: number;
+  text: string;
+  a: string[];
+  b: string[];
+  status: "agree" | "only_a" | "only_b" | "partial" | "none";
+}
+
+/** Comparación A vs B de un documento. */
+export interface PairDocumentComparison {
+  name: string;
+  full_text: string;
+  units: PairUnitDiff[];
+  per_code: PairCodeMetric[];
+  overall: PairOverallMetrics;
+  a_fragments: FragmentSim[];
+  b_fragments: FragmentSim[];
+}
+
+/** Resultado completo de una comparación A vs B. */
+export interface PairComparisonResult {
+  documents: PairDocumentComparison[];
+  a_label: string;
+  b_label: string;
+  embedding_model: string;
+  default_threshold: number;
+  unmapped_a: string[];
+  unmapped_b: string[];
+  missing_text: string[];
+  notes: string[];
 }
 
 /** Estados posibles de un trabajo. */

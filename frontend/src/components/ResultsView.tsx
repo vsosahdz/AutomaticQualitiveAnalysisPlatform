@@ -1,32 +1,47 @@
-// Vista de resultados reutilizable: pestañas por documento, visor con resaltado,
-// y descargas. Se usa tanto para un análisis recién hecho (con jobId → permite
-// descargar CSV del backend) como para análisis cargados desde JSON (sin jobId).
-import { useEffect, useState } from "react";
+// Vista de resultados reutilizable: pestañas por documento, visor con resaltado
+// y edición de hallazgos, y descargas. Se usa tanto para un análisis recién hecho
+// como para análisis cargados desde JSON. Las descargas (JSON y CSV) se generan
+// en el navegador desde el estado actual, así que reflejan las ediciones.
+import { useEffect, useMemo, useState } from "react";
 import type { Code, Result } from "../types";
-import { csvUrl, csvZipUrl } from "../api";
+import type { EditableDocuments } from "../useEditableDocuments";
 import { exportAllDocuments, exportDocument } from "../aqaFile";
+import { csvOptions, downloadCsv, downloadCsvZip } from "../csvExport";
+import { isEdited } from "../editing";
 import { formatSeconds } from "../format";
 import { HighlightViewer } from "./HighlightViewer";
+import { useI18n } from "../i18n";
 
 interface ResultsViewProps {
-  result: Result;
+  /** Metadatos del análisis (tipo, modelos, tiempos, descartes). */
+  result: Omit<Result, "documents">;
+  /** Documentos editables del análisis. */
+  editable: EditableDocuments;
+  /** Codebook con el que se hizo el análisis (colores y etiquetas permitidas). */
   codebook: Code[];
-  /** ID del trabajo; si está presente habilita las descargas de CSV del backend. */
-  jobId?: string | null;
 }
 
-export function ResultsView({ result, codebook, jobId }: ResultsViewProps) {
+export function ResultsView({ result, editable, codebook }: ResultsViewProps) {
+  const { t } = useI18n();
   const [activeDoc, setActiveDoc] = useState(0);
-  const docs = result.documents;
+  const docs = editable.docs;
 
   // Si cambia el conjunto de documentos, vuelve al primero.
   useEffect(() => {
     setActiveDoc(0);
   }, [docs.length]);
 
+  // Etiquetas permitidas al editar: los códigos activos del análisis.
+  const allowedLabels = useMemo(
+    () => codebook.filter((c) => c.active !== false).map((c) => c.label),
+    [codebook]
+  );
+
   if (docs.length === 0) return null;
   const current = docs[Math.min(activeDoc, docs.length - 1)];
   const multiple = docs.length > 1;
+  const options = csvOptions(result, docs);
+  const editedCount = docs.filter(isEdited).length;
 
   return (
     <div className="panel">
@@ -34,7 +49,7 @@ export function ResultsView({ result, codebook, jobId }: ResultsViewProps) {
         {/* Grupo 1: elegir el documento que se visualiza (solo si hay varios). */}
         {multiple && (
           <div className="toolbar-group">
-            <span className="group-label">Documento:</span>
+            <span className="group-label">{t("results.document")}</span>
             <div className="doc-tabs">
               {docs.map((d, i) => (
                 <button
@@ -43,6 +58,7 @@ export function ResultsView({ result, codebook, jobId }: ResultsViewProps) {
                   onClick={() => setActiveDoc(i)}
                 >
                   {d.name}
+                  {isEdited(d) && <span title={t("results.edited")}> ✎</span>}
                 </button>
               ))}
             </div>
@@ -51,57 +67,63 @@ export function ResultsView({ result, codebook, jobId }: ResultsViewProps) {
 
         {/* Grupo 2: exportar / descargar. */}
         <div className="toolbar-group exports">
-          <span className="group-label">Exportar:</span>
+          <span className="group-label">{t("results.export")}</span>
 
           <button
             className="button"
-            onClick={() => exportDocument(current, codebook)}
-            title="Exporta este documento a un JSON reutilizable"
+            onClick={() => {
+              exportDocument(current, codebook);
+              if (!multiple) editable.markClean();
+            }}
+            title={t("results.jsonTitle")}
           >
-            ⬇ JSON ({current.name})
+            {t("results.json", { name: current.name })}
           </button>
 
           {multiple && (
             <button
               className="button"
-              onClick={() => exportAllDocuments(docs, codebook)}
-              title="Exporta todos los documentos como un ZIP de JSON"
+              onClick={async () => {
+                await exportAllDocuments(docs, codebook);
+                editable.markClean();
+              }}
+              title={t("results.allJsonTitle")}
             >
-              ⬇ Todos (JSON .zip)
+              {t("results.allJson")}
             </button>
           )}
 
-          {jobId && !multiple && (
-            <a className="button" href={csvUrl(jobId)}>
-              ↓ CSV
-            </a>
-          )}
-          {jobId && multiple && (
-            <>
-              <a className="button" href={csvUrl(jobId)}>
-                ↓ CSV combinado
-              </a>
-              <a className="button" href={csvZipUrl(jobId)}>
-                ↓ CSV separados (.zip)
-              </a>
-            </>
+          <button className="button" onClick={() => downloadCsv(docs, options)}>
+            {multiple ? t("results.csvCombined") : t("results.csv")}
+          </button>
+          {multiple && (
+            <button className="button" onClick={() => downloadCsvZip(docs, options)}>
+              {t("results.csvZip")}
+            </button>
           )}
         </div>
       </div>
 
       {/* Feedback de tiempos: total del trabajo y del documento actual. */}
       <p className="timing-note">
-        ⏱ Tiempo total: <strong>{formatSeconds(result.total_seconds)}</strong>
+        {t("results.totalTime")} <strong>{formatSeconds(result.total_seconds)}</strong>
         {multiple && current.elapsed_seconds !== undefined && (
           <>
-            {" · "}este documento:{" "}
+            {" · "}{t("results.thisDoc")}{" "}
             <strong>{formatSeconds(current.elapsed_seconds)}</strong>
           </>
         )}
         {result.dropped.length > 0 && (
           <span className="dropped-note">
             {" · "}
-            {result.dropped.length} salida(s) del LLM descartada(s)
+            {t("results.dropped", { n: result.dropped.length })}
+          </span>
+        )}
+        {editedCount > 0 && (
+          <span className={editable.dirty ? "dirty-note" : "meta"}>
+            {" · "}
+            {t("results.editedDocs", { n: editedCount })}
+            {editable.dirty && t("results.unsaved")}
           </span>
         )}
       </p>
@@ -112,6 +134,12 @@ export function ResultsView({ result, codebook, jobId }: ResultsViewProps) {
         ensembleModels={
           result.analysis_type === "consensus" ? result.models : undefined
         }
+        editing={{
+          allowedLabels,
+          apply: (op) => editable.apply(current.name, op),
+          undo: () => editable.undo(current.name),
+          canUndo: editable.canUndo(current.name),
+        }}
       />
     </div>
   );

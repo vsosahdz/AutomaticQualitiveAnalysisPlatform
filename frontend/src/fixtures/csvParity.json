@@ -1,0 +1,112 @@
+[
+  {
+    "name": "un modelo sin ediciones",
+    "result": {
+      "analysis_type": "single",
+      "models": [],
+      "documents": [
+        {
+          "name": "e1.txt",
+          "full_text": "ENTREVISTADO: Las trabas, \"permisos\" y más.\nCreamos alianzas con la comunidad.",
+          "fragments": [
+            {
+              "start": 14,
+              "end": 44,
+              "code": "Barrera",
+              "quote": "Las trabas, \"permisos\" y más.\n",
+              "justification": "Trabas, con \"comillas\""
+            },
+            {
+              "start": 44,
+              "end": 77,
+              "code": "Estrategia",
+              "quote": "Creamos alianzas con la comunidad",
+              "justification": "línea\nnueva"
+            }
+          ]
+        },
+        {
+          "name": "e2.txt",
+          "full_text": "El calor afectó la cosecha. Nos ayudó la bodega.",
+          "fragments": [
+            {
+              "start": 0,
+              "end": 27,
+              "code": "Barrera",
+              "quote": "El calor afectó la cosecha.",
+              "justification": "calor"
+            }
+          ]
+        }
+      ]
+    },
+    "combined": "archivo,cita,codigo,justificacion\r\ne1.txt,\"Las trabas, \"\"permisos\"\" y más.\n\",Barrera,\"Trabas, con \"\"comillas\"\"\"\r\ne1.txt,Creamos alianzas con la comunidad,Estrategia,\"línea\nnueva\"\r\ne2.txt,El calor afectó la cosecha.,Barrera,calor\r\n",
+    "per_document": {
+      "e1.txt": "archivo,cita,codigo,justificacion\r\ne1.txt,\"Las trabas, \"\"permisos\"\" y más.\n\",Barrera,\"Trabas, con \"\"comillas\"\"\"\r\ne1.txt,Creamos alianzas con la comunidad,Estrategia,\"línea\nnueva\"\r\n",
+      "e2.txt": "archivo,cita,codigo,justificacion\r\ne2.txt,El calor afectó la cosecha.,Barrera,calor\r\n"
+    }
+  },
+  {
+    "name": "consenso editado",
+    "result": {
+      "analysis_type": "consensus",
+      "models": [
+        "a",
+        "b",
+        "c"
+      ],
+      "documents": [
+        {
+          "name": "e1.txt",
+          "full_text": "ENTREVISTADO: Las trabas, \"permisos\" y más.\nCreamos alianzas con la comunidad.",
+          "fragments": [
+            {
+              "start": 14,
+              "end": 44,
+              "code": "Barrera",
+              "quote": "Las trabas, \"permisos\" y más.\n",
+              "justification": "j",
+              "models": [
+                "a",
+                "b"
+              ],
+              "origin": "editado",
+              "original": {
+                "start": 14,
+                "end": 30,
+                "code": "Barrera",
+                "justification": "x"
+              }
+            },
+            {
+              "start": 44,
+              "end": 60,
+              "code": "Estrategia",
+              "quote": "Creamos alianzas",
+              "justification": "",
+              "origin": "manual"
+            }
+          ],
+          "removed_fragments": [
+            {
+              "start": 0,
+              "end": 13,
+              "code": "Facilitador",
+              "quote": "ENTREVISTADO:",
+              "justification": "",
+              "models": [
+                "a",
+                "b",
+                "c"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "combined": "archivo,cita,codigo,justificacion,acuerdo,origen\r\ne1.txt,\"Las trabas, \"\"permisos\"\" y más.\n\",Barrera,j,2 de 3,editado\r\ne1.txt,Creamos alianzas,Estrategia,,,manual\r\n",
+    "per_document": {
+      "e1.txt": "archivo,cita,codigo,justificacion,acuerdo,origen\r\ne1.txt,\"Las trabas, \"\"permisos\"\" y más.\n\",Barrera,j,2 de 3,editado\r\ne1.txt,Creamos alianzas,Estrategia,,,manual\r\n"
+    }
+  }
+]

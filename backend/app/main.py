@@ -34,7 +34,7 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(
         title="Análisis Cualitativo Automático",
-        version="0.1.0",
+        version="0.2.0",
         description=(
             "API de codificación asistida por LLM para investigación cualitativa "
             "en sistemas alimentarios. Recibe transcripciones TXT y un codebook, y "

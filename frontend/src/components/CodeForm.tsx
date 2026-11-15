@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Code, FewShotExample } from "../types";
 import { validateCode } from "../codebook";
+import { useI18n } from "../i18n";
 
 interface CodeFormProps {
   /** Código a editar; si es undefined, es un alta nueva. */
@@ -35,6 +36,7 @@ export function CodeForm({
   onSave,
   onCancel,
 }: CodeFormProps) {
+  const { lang, t } = useI18n();
   const isBase = editing?.origin === "base";
   const [label, setLabel] = useState(editing?.label ?? "");
   const [definition, setDefinition] = useState(editing?.definition ?? "");
@@ -72,7 +74,7 @@ export function CodeForm({
         return;
       }
     } else if (!definition.trim()) {
-      setError("La definición no puede quedar vacía.");
+      setError(t("code.definitionEmpty"));
       return;
     }
 
@@ -94,45 +96,53 @@ export function CodeForm({
 
   return (
     <div className="code-form">
-      <h3>{editing ? "Editar código" : "Nuevo código"}</h3>
+      <h3>{editing ? t("form.editTitle") : t("form.newTitle")}</h3>
 
       <label>
-        Nombre
+        {t("form.name")}
         <input
           type="text"
           value={label}
           disabled={isBase}
-          placeholder="p. ej. Gobernanza"
+          placeholder={t("form.namePlaceholder")}
           onChange={(e) => setLabel(e.target.value)}
         />
       </label>
 
       <label>
-        Definición
+        {t("form.definition")}
         <textarea
           value={definition}
           rows={5}
-          placeholder="Qué es · qué efecto tiene · en qué se diferencia de conceptos vecinos · ejemplos"
+          placeholder={t("form.definitionPlaceholder")}
           onChange={(e) => setDefinition(e.target.value)}
         />
       </label>
-      <p className="hint">
-        💡 Una buena definición dice: <strong>qué es</strong>,{" "}
-        <strong>qué efecto tiene</strong>, <strong>en qué se diferencia</strong>{" "}
-        de conceptos vecinos y da <strong>ejemplos</strong>.
-      </p>
+      {lang === "es" ? (
+        <p className="hint">
+          💡 Una buena definición dice: <strong>qué es</strong>,{" "}
+          <strong>qué efecto tiene</strong>, <strong>en qué se diferencia</strong>{" "}
+          de conceptos vecinos y da <strong>ejemplos</strong>.
+        </p>
+      ) : (
+        <p className="hint">
+          💡 A good definition states <strong>what it is</strong>,{" "}
+          <strong>what effect it has</strong>, <strong>how it differs</strong> from
+          neighboring concepts, and gives <strong>examples</strong>.
+        </p>
+      )}
 
       <fieldset className="examples">
-        <legend>Ejemplos few-shot (opcional)</legend>
+        <legend>{t("form.examples")}</legend>
         {examples.map((ex, i) => (
           <div key={i} className="example-row">
             <span className={`badge ${ex.kind}`}>
-              {ex.kind === "positive" ? "✓ Sí" : "✗ No"}
+              {ex.kind === "positive" ? t("form.yes") : t("form.no")}
             </span>
             <input
               type="text"
               value={ex.text}
-              placeholder="ejemplo…"
+              placeholder={t("form.examplePlaceholder")}
               onChange={(e) => updateExample(i, e.target.value)}
             />
             <button type="button" onClick={() => removeExample(i)}>
@@ -142,16 +152,16 @@ export function CodeForm({
         ))}
         <div className="example-actions">
           <button type="button" onClick={() => addExample("positive")}>
-            ＋ Ejemplo positivo
+            {t("form.addPositive")}
           </button>
           <button type="button" onClick={() => addExample("negative")}>
-            ＋ Ejemplo negativo
+            {t("form.addNegative")}
           </button>
         </div>
       </fieldset>
 
       <label className="color-field">
-        Color
+        {t("form.color")}
         <input
           type="color"
           value={color}
@@ -163,10 +173,10 @@ export function CodeForm({
 
       <div className="form-actions">
         <button type="button" onClick={onCancel}>
-          Cancelar
+          {t("common.cancel")}
         </button>
         <button type="button" className="primary" onClick={handleSave}>
-          Guardar
+          {t("common.save")}
         </button>
       </div>
     </div>

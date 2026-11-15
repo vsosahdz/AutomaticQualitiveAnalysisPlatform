@@ -6,6 +6,7 @@ import type {
   HumanSummary,
   JobStatus,
   ModelsResponse,
+  PairComparisonResult,
   ProcessRequest,
   Result,
 } from "./types";
@@ -106,6 +107,29 @@ export async function compareCodings(
   const res = await fetch(`${API_BASE}/compare`, { method: "POST", body: form });
   if (!res.ok) throw new ApiError(res.status, await readError(res));
   return (await res.json()) as ComparisonResult;
+}
+
+/**
+ * Compara dos codificaciones cualesquiera (A vs B). Cada lado es un CSV/XLSX
+ * humano o uno o varios JSON exportados; las transcripciones TXT aportan el
+ * texto cuando ningún lado lo trae.
+ */
+export async function compareAB(
+  aFiles: File[],
+  bFiles: File[],
+  transcripts: File[],
+  aLabel: string,
+  bLabel: string
+): Promise<PairComparisonResult> {
+  const form = new FormData();
+  for (const f of aFiles) form.append("a_files", f);
+  for (const f of bFiles) form.append("b_files", f);
+  for (const f of transcripts) form.append("transcripts", f);
+  form.append("a_label", aLabel);
+  form.append("b_label", bLabel);
+  const res = await fetch(`${API_BASE}/compare/ab`, { method: "POST", body: form });
+  if (!res.ok) throw new ApiError(res.status, await readError(res));
+  return (await res.json()) as PairComparisonResult;
 }
 
 /** Cuantifica las citas por código de un archivo de codificación humana. */

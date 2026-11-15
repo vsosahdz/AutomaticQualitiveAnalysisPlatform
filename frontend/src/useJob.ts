@@ -10,6 +10,7 @@ import {
   startProcessing,
 } from "./api";
 import type { JobState, ProcessRequest, Result } from "./types";
+import { t } from "./i18n";
 
 /** Estado expuesto por el hook useJob. */
 export interface UseJob {
@@ -71,7 +72,7 @@ export function useJob(): UseJob {
             return; // termina el polling
           }
           if (status.state === "error") {
-            setError(status.error ?? "Error desconocido");
+            setError(status.error ?? t("job.unknownError"));
             return;
           }
           if (status.state === "cancelled") {
@@ -80,7 +81,7 @@ export function useJob(): UseJob {
           poll(id); // sigue consultando
         } catch (err) {
           const msg =
-            err instanceof ApiError ? err.message : "Error de red al consultar el trabajo";
+            err instanceof ApiError ? err.message : t("job.networkError");
           setError(msg);
           setState("error");
         }
@@ -99,7 +100,7 @@ export function useJob(): UseJob {
         poll(id);
       } catch (err) {
         const msg =
-          err instanceof ApiError ? err.message : "No se pudo iniciar el procesamiento";
+          err instanceof ApiError ? err.message : t("job.startError");
         setError(msg);
         setState("error");
       }
@@ -111,14 +112,14 @@ export function useJob(): UseJob {
   const cancel = useCallback(async () => {
     if (!jobId) return;
     stopPolling();
-    setMessage("Cancelando…");
+    setMessage(t("job.cancelling"));
     try {
       await cancelJob(jobId);
     } catch {
       // Ignora errores de red al cancelar: el estado se refleja igualmente.
     }
     setState("cancelled");
-    setMessage("Cancelado");
+    setMessage(t("job.cancelled"));
   }, [jobId, stopPolling]);
 
   return { state, progress, message, result, jobId, error, run, cancel, reset };

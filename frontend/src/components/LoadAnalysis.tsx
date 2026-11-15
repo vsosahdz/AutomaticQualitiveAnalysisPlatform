@@ -1,9 +1,12 @@
 // Pestaña "Cargar análisis": sube uno o varios JSON exportados por la herramienta
-// y los muestra en el mismo visor que un análisis recién hecho.
+// y los muestra en el mismo visor que un análisis recién hecho, donde también
+// pueden editarse.
 import { useRef, useState } from "react";
-import type { Code, CodedDocument, Result } from "../types";
+import type { Code, CodedDocument } from "../types";
 import { parseAqaExport } from "../aqaFile";
+import { useEditableDocuments } from "../useEditableDocuments";
 import { ResultsView } from "./ResultsView";
+import { useI18n } from "../i18n";
 
 /** Une los codebooks de los archivos cargados deduplicando por etiqueta. */
 function mergeCodebooks(codebooks: Code[][]): Code[] {
@@ -17,7 +20,8 @@ function mergeCodebooks(codebooks: Code[][]): Code[] {
 }
 
 export function LoadAnalysis() {
-  const [documents, setDocuments] = useState<CodedDocument[]>([]);
+  const editable = useEditableDocuments();
+  const { lang, t } = useI18n();
   const [codebook, setCodebook] = useState<Code[]>([]);
   const [error, setError] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,30 +46,38 @@ export function LoadAnalysis() {
     }
 
     if (rejected.length > 0) {
-      setError(
-        `No son archivos de análisis válidos y se omitieron: ${rejected.join(", ")}`
-      );
+      setError(t("load.invalid", { files: rejected.join(", ") }));
     }
     if (docs.length === 0) return;
 
     // Evita duplicados por nombre de documento (reemplaza el existente).
-    const byName = new Map(documents.map((d) => [d.name, d]));
-    for (const d of docs) byName.set(d.name, d);
-
-    setDocuments(Array.from(byName.values()));
+    const replaced = docs.filter((d) => editable.docs.some((e) => e.name === d.name));
+    if (
+      replaced.length > 0 &&
+      editable.dirty &&
+      !window.confirm(t("load.confirmReplace", { files: replaced.map((d) => d.name).join(", ") }))
+    ) {
+      return;
+    }
+    editable.upsert(docs);
     setCodebook(mergeCodebooks([codebook, ...codebooks]));
   }
-
-  const result: Result = { documents, dropped: [] };
 
   return (
     <div>
       <div className="panel">
-        <h2>Cargar análisis</h2>
-        <p className="hint">
-          Sube uno o varios archivos <strong>*_AQA.json</strong> exportados por la
-          herramienta para visualizarlos aquí.
-        </p>
+        <h2>{t("load.title")}</h2>
+        {lang === "es" ? (
+          <p className="hint">
+            Sube uno o varios archivos <strong>*_AQA.json</strong> exportados por la
+            herramienta para visualizarlos aquí.
+          </p>
+        ) : (
+          <p className="hint">
+            Upload one or more <strong>*_AQA.json</strong> files exported by the tool
+            to view them here.
+          </p>
+        )}
         <div
           className="dropzone"
           onDragOver={(e) => e.preventDefault()}
@@ -75,7 +87,7 @@ export function LoadAnalysis() {
           }}
           onClick={() => inputRef.current?.click()}
         >
-          <p>Arrastra archivos .json aquí o haz clic para seleccionar</p>
+          <p>{t("load.drop")}</p>
           <input
             ref={inputRef}
             type="file"
@@ -86,21 +98,27 @@ export function LoadAnalysis() {
           />
         </div>
         {error && <p className="error">{error}</p>}
-        {documents.length > 0 && (
+        {editable.docs.length > 0 && (
           <button
             className="button"
             onClick={() => {
-              setDocuments([]);
+              if (
+                editable.dirty &&
+                !window.confirm(t("load.confirmClear"))
+              ) {
+                return;
+              }
+              editable.setAll([]);
               setCodebook([]);
             }}
           >
-            Limpiar
+            {t("load.clear")}
           </button>
         )}
       </div>
 
-      {documents.length > 0 && (
-        <ResultsView result={result} codebook={codebook} />
+      {editable.docs.length > 0 && (
+        <ResultsView result={{ dropped: [] }} editable={editable} codebook={codebook} />
       )}
     </div>
   );

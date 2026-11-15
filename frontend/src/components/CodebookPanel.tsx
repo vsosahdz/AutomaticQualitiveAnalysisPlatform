@@ -12,6 +12,7 @@ import {
   pickColor,
 } from "../codebook";
 import { CodeForm } from "./CodeForm";
+import { useI18n } from "../i18n";
 
 interface CodebookPanelProps {
   codebook: Code[];
@@ -19,6 +20,7 @@ interface CodebookPanelProps {
 }
 
 export function CodebookPanel({ codebook, onChange }: CodebookPanelProps) {
+  const { t } = useI18n();
   // Estado del formulario: 'closed' | 'new' | el código en edición.
   const [form, setForm] = useState<"closed" | "new" | Code>("closed");
 
@@ -72,24 +74,27 @@ export function CodebookPanel({ codebook, onChange }: CodebookPanelProps) {
   return (
     <div className="panel">
       <div className="panel-header">
-        <h2>Codebook</h2>
+        <h2>{t("codebook.title")}</h2>
         <button
           className="primary"
           disabled={!canAddCustom(codebook)}
           title={
             canAddCustom(codebook)
-              ? "Añadir un código custom"
-              : `Máximo ${MAX_CUSTOM_CODES} códigos custom`
+              ? t("codebook.addTitle")
+              : t("codebook.maxCustom", { n: MAX_CUSTOM_CODES })
           }
           onClick={() => setForm("new")}
         >
-          ＋ Añadir código
+          {t("codebook.add")}
         </button>
       </div>
 
       <p className="meta">
-        {activeBaseCount(codebook)} base activos · {customCount(codebook)}/
-        {MAX_CUSTOM_CODES} custom
+        {t("codebook.summary", {
+          base: activeBaseCount(codebook),
+          custom: customCount(codebook),
+          max: MAX_CUSTOM_CODES,
+        })}
       </p>
 
       <ul className="code-list">
@@ -106,27 +111,27 @@ export function CodebookPanel({ codebook, onChange }: CodebookPanelProps) {
             <p className="code-def">{code.definition}</p>
             {code.examples.length > 0 && (
               <p className="code-examples">
-                {code.examples.length} ejemplo(s) few-shot
+                {t("codebook.examples", { n: code.examples.length })}
               </p>
             )}
             <div className="code-actions">
-              <button onClick={() => setForm(code)}>Editar</button>
+              <button onClick={() => setForm(code)}>{t("common.edit")}</button>
               <button
                 onClick={() => toggleActive(code)}
                 disabled={code.active && !canDeactivate(codebook, code)}
                 title={
                   code.active && !canDeactivate(codebook, code)
-                    ? "Debe quedar al menos un código base activo"
+                    ? t("codebook.keepOneBase")
                     : ""
                 }
               >
-                {code.active ? "Desactivar" : "Activar"}
+                {code.active ? t("codebook.deactivate") : t("codebook.activate")}
               </button>
               {code.origin === "base" ? (
-                <button onClick={() => restore(code)}>Restaurar</button>
+                <button onClick={() => restore(code)}>{t("codebook.restore")}</button>
               ) : (
                 <button className="danger" onClick={() => remove(code)}>
-                  Borrar
+                  {t("codebook.delete")}
                 </button>
               )}
             </div>

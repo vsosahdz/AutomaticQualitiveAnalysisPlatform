@@ -7,11 +7,14 @@ import type { Code, DocumentInput } from "./types";
 import { seedCodebook } from "./codebook";
 import { getModels } from "./api";
 import { useJob } from "./useJob";
+import { useEditableDocuments } from "./useEditableDocuments";
+import { normalizeDocument } from "./aqaFile";
 import { CodebookPanel } from "./components/CodebookPanel";
 import { FileUpload } from "./components/FileUpload";
 import { ResultsView } from "./components/ResultsView";
 import { LoadAnalysis } from "./components/LoadAnalysis";
 import { CompareView } from "./components/CompareView";
+import { localizeProgress, useI18n } from "./i18n";
 
 /** Estima el tamaño (en miles de millones de parámetros) desde el nombre. */
 function estimateSize(name: string): number {
@@ -43,6 +46,7 @@ type Theme = "light" | "dark";
 export default function App() {
   // Pestaña activa de la aplicación.
   const [tab, setTab] = useState<Tab>("analizar");
+  const { lang, setLang, t } = useI18n();
 
   // Tema (claro/oscuro), persistido en localStorage y aplicado en <html>.
   const [theme, setTheme] = useState<Theme>(
@@ -57,12 +61,16 @@ export default function App() {
   const [codebook, setCodebook] = useState<Code[]>(() => seedCodebook());
   const [documents, setDocuments] = useState<DocumentInput[]>([]);
   const job = useJob();
+  // Codebook con el que se procesó el resultado actual (congelado al procesar).
+  const [runCodebook, setRunCodebook] = useState<Code[]>([]);
+  // Documentos del resultado, editables por la persona.
+  const editable = useEditableDocuments();
 
   // Modelos de LLM disponibles y el seleccionado en el combo (modo un modelo).
   const [models, setModels] = useState<string[]>([]);
   const [model, setModel] = useState<string>("");
   // Mensaje de error si no se pueden cargar los modelos (vs "cargando…" eterno).
-  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [modelsError, setModelsError] = useState<"models.empty" | "models.loadError" | null>(null);
 
   // Tipo de análisis y, en consenso, los modelos del ensamble (2–3).
   const [analysisType, setAnalysisType] = useState<"single" | "consensus">("single");
@@ -82,10 +90,7 @@ export default function App() {
     getModels()
       .then((data) => {
         if (data.models.length === 0) {
-          setModelsError(
-            "No hay modelos disponibles. Verifica que Ollama esté en marcha y que " +
-              "OLLAMA_HOST apunte a ese servidor (con los modelos descargados)."
-          );
+          setModelsError("models.empty");
           return;
         }
         setModelsError(null);
@@ -95,10 +100,7 @@ export default function App() {
         setModel(pickRecommended(data.models, data.default));
       })
       .catch(() => {
-        setModelsError(
-          "No se pudieron cargar los modelos (¿el backend/Ollama está en marcha? " +
-            "Revisa OLLAMA_HOST)."
-        );
+        setModelsError("models.loadError");
       });
   }, []);
 
@@ -107,6 +109,12 @@ export default function App() {
     () => codebook.filter((c) => c.active),
     [codebook]
   );
+
+  // Cada resultado nuevo reemplaza los documentos editables.
+  const { setAll } = editable;
+  useEffect(() => {
+    setAll((job.result?.documents ?? []).map(normalizeDocument));
+  }, [job.result, setAll]);
 
   const busy = job.state === "pending" || job.state === "running";
   // En consenso se requieren 2–3 modelos seleccionados.
@@ -119,6 +127,13 @@ export default function App() {
 
   /** Dispara el procesamiento según el tipo de análisis elegido. */
   function handleProcess() {
+    if (
+      editable.dirty &&
+      !window.confirm(t("run.confirmDirty"))
+    ) {
+      return;
+    }
+    setRunCodebook(activeCodes);
     if (analysisType === "consensus") {
       job.run({ documents, codebook: activeCodes, models: consensusModels });
     } else {
@@ -131,19 +146,27 @@ export default function App() {
       <header>
         <div className="header-top">
           <div>
-            <h1>Análisis Cualitativo Automático</h1>
-            <p className="subtitle">
-              Codificación asistida por LLM para investigación en sistemas alimentarios
-            </p>
+            <h1>{t("app.title")}</h1>
+            <p className="subtitle">{t("app.subtitle")}</p>
           </div>
-          {/* Toggle de modo oscuro. */}
-          <button
-            className="theme-toggle"
-            title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {theme === "dark" ? "☀️ Claro" : "🌙 Oscuro"}
-          </button>
+          <div className="header-actions">
+            {/* Idioma de la interfaz. */}
+            <button
+              className="theme-toggle"
+              title={t("lang.switchTitle")}
+              onClick={() => setLang(lang === "es" ? "en" : "es")}
+            >
+              {t("lang.switch")}
+            </button>
+            {/* Toggle de modo oscuro. */}
+            <button
+              className="theme-toggle"
+              title={theme === "dark" ? t("theme.toLight") : t("theme.toDark")}
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? t("theme.light") : t("theme.dark")}
+            </button>
+          </div>
         </div>
         {/* Pestañas principales */}
         <nav className="tabs">
@@ -151,28 +174,32 @@ export default function App() {
             className={tab === "analizar" ? "active" : ""}
             onClick={() => setTab("analizar")}
           >
-            Analizar
+            {t("tab.analyze")}
           </button>
           <button
             className={tab === "cargar" ? "active" : ""}
             onClick={() => setTab("cargar")}
           >
-            Cargar análisis
+            {t("tab.load")}
           </button>
           <button
             className={tab === "comparar" ? "active" : ""}
             onClick={() => setTab("comparar")}
           >
-            Comparar
+            {t("tab.compare")}
           </button>
         </nav>
       </header>
 
-      {tab === "cargar" ? (
+      {/* Las tres pestañas quedan montadas para conservar su estado (y las
+          ediciones) al cambiar de pestaña; solo se oculta la inactiva. */}
+      <div hidden={tab !== "cargar"}>
         <LoadAnalysis />
-      ) : tab === "comparar" ? (
+      </div>
+      <div hidden={tab !== "comparar"}>
         <CompareView />
-      ) : (
+      </div>
+      <div hidden={tab !== "analizar"}>
         <div className="layout">
           {/* Columna izquierda: configuración de la corrida */}
           <aside>
@@ -185,7 +212,7 @@ export default function App() {
             <div className="panel run-panel">
               {/* Tipo de análisis: un solo modelo o consenso (ensamble). */}
               <div className="analysis-type">
-                <span className="group-label">Tipo de análisis:</span>
+                <span className="group-label">{t("run.type")}</span>
                 <label>
                   <input
                     type="radio"
@@ -194,7 +221,7 @@ export default function App() {
                     disabled={busy}
                     onChange={() => setAnalysisType("single")}
                   />
-                  Un modelo
+                  {t("run.single")}
                 </label>
                 <label>
                   <input
@@ -204,13 +231,13 @@ export default function App() {
                     disabled={busy}
                     onChange={() => setAnalysisType("consensus")}
                   />
-                  Consenso (2–3 modelos)
+                  {t("run.consensus")}
                 </label>
               </div>
 
               {analysisType === "single" ? (
                 <label className="model-select">
-                  Modelo LLM:
+                  {t("run.model")}
                   <select
                     value={model}
                     disabled={busy || models.length === 0}
@@ -218,7 +245,7 @@ export default function App() {
                   >
                     {models.length === 0 && (
                       <option value="">
-                        {modelsError ? "(sin modelos)" : "(cargando…)"}
+                        {modelsError ? t("run.noModels") : t("run.loadingOption")}
                       </option>
                     )}
                     {models.map((m) => (
@@ -231,7 +258,7 @@ export default function App() {
               ) : (
                 <div className="consensus-models">
                   <span className="group-label">
-                    Modelos del ensamble ({consensusModels.length}/3):
+                    {t("run.ensemble", { n: consensusModels.length })}
                   </span>
                   <div className="model-checks">
                     {models.map((m) => {
@@ -251,15 +278,15 @@ export default function App() {
                     })}
                   </div>
                   {models.length === 0 && !modelsError && (
-                    <p className="hint">Cargando modelos…</p>
+                    <p className="hint">{t("run.loadingModels")}</p>
                   )}
                   {consensusModels.length < 2 && models.length > 0 && (
-                    <p className="hint">Selecciona al menos 2 modelos.</p>
+                    <p className="hint">{t("run.pickTwo")}</p>
                   )}
                 </div>
               )}
 
-              {modelsError && <p className="error">{modelsError}</p>}
+              {modelsError && <p className="error">{t(modelsError)}</p>}
 
               <div className="run-buttons">
                 <button
@@ -267,17 +294,17 @@ export default function App() {
                   disabled={!canProcess}
                   onClick={handleProcess}
                 >
-                  {busy ? "Procesando…" : "▶ Procesar"}
+                  {busy ? t("run.processing") : t("run.process")}
                 </button>
                 {busy && (
                   <button className="danger big" onClick={job.cancel}>
-                    ✕ Cancelar
+                    {t("run.cancel")}
                   </button>
                 )}
               </div>
 
               {job.state === "cancelled" && (
-                <p className="meta">Procesamiento cancelado.</p>
+                <p className="meta">{t("run.cancelled")}</p>
               )}
 
               {busy && (
@@ -287,26 +314,26 @@ export default function App() {
                     style={{ width: `${Math.round(job.progress * 100)}%` }}
                   />
                   <span className="progress-label">
-                    {Math.round(job.progress * 100)}% · {job.message}
+                    {Math.round(job.progress * 100)}% · {localizeProgress(job.message, lang)}
                   </span>
                 </div>
               )}
 
               {job.state === "error" && (
-                <p className="error">Error: {job.error}</p>
+                <p className="error">{t("common.error", { msg: job.error ?? "" })}</p>
               )}
             </div>
 
-            {result && result.documents.length > 0 && (
+            {result && editable.docs.length > 0 && (
               <ResultsView
                 result={result}
-                codebook={codebook}
-                jobId={job.jobId}
+                editable={editable}
+                codebook={runCodebook}
               />
             )}
           </main>
         </div>
-      )}
+      </div>
     </div>
   );
 }

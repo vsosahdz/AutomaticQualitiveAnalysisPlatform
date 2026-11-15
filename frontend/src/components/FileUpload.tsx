@@ -2,6 +2,7 @@
 // Valida el tipo de archivo y lee su contenido de texto.
 import { useRef, useState } from "react";
 import type { DocumentInput } from "../types";
+import { useI18n } from "../i18n";
 
 interface FileUploadProps {
   documents: DocumentInput[];
@@ -14,6 +15,7 @@ function isTxt(file: File): boolean {
 }
 
 export function FileUpload({ documents, onChange }: FileUploadProps) {
+  const { t } = useI18n();
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,7 +27,7 @@ export function FileUpload({ documents, onChange }: FileUploadProps) {
     const accepted: DocumentInput[] = [];
     for (const file of Array.from(files)) {
       if (!isTxt(file)) {
-        setError(`"${file.name}" no es un archivo TXT y se omitió.`);
+        setError(t("upload.notTxt", { name: file.name }));
         continue;
       }
       const content = await file.text();
@@ -45,7 +47,7 @@ export function FileUpload({ documents, onChange }: FileUploadProps) {
 
   return (
     <div className="panel">
-      <h2>Transcripciones</h2>
+      <h2>{t("upload.title")}</h2>
 
       <div
         className={`dropzone ${dragging ? "dragging" : ""}`}
@@ -61,7 +63,7 @@ export function FileUpload({ documents, onChange }: FileUploadProps) {
         }}
         onClick={() => inputRef.current?.click()}
       >
-        <p>Arrastra archivos .txt aquí o haz clic para seleccionar</p>
+        <p>{t("upload.drop")}</p>
         <input
           ref={inputRef}
           type="file"

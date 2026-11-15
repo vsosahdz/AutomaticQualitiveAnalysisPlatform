@@ -7,7 +7,8 @@ made of three base codes (*Barrera* / Barrier, *Facilitador* / Facilitator,
 *Estrategia* / Strategy) plus up to three user-defined codes. Results are shown
 in a color-highlighted viewer and can be exported as CSV.
 
-> The user interface, the prompt and the codebook are in Spanish.
+> The prompt and the base codebook are in Spanish. The user interface can be
+> switched between Spanish and English with the **EN / ES** button in the header.
 
 ## How it works
 
@@ -23,9 +24,40 @@ in a color-highlighted viewer and can be exported as CSV.
    IDs are resolved to exact offsets, and duplicate or nested ranges of the same
    code are merged (`backend/app/services/coding.py`).
 
-Additional features: consensus coding across several models, comparison against a
-human-coded CSV (exact and embedding-based semantic matching), and a Word report
-of the findings detected only by the LLM.
+Additional features: consensus coding across several models, manual editing of
+the findings with provenance tracking, comparison against a human-coded CSV
+(exact and embedding-based semantic matching), comparison between any two codings
+with symmetric agreement metrics, and a Word report of the findings detected only
+by the LLM.
+
+## Editing findings
+
+After an analysis (**Analyze** tab) or after loading an exported JSON (**Load
+analysis** tab), **Edit findings** lets a person correct the LLM coding:
+
+- **Add** a finding by selecting text and choosing a label. Only the labels used
+  in that analysis are allowed.
+- **Adjust span**, **change label**, **edit justification** and **delete**.
+  **Undo** reverts one step at a time.
+
+In edit mode the text is shown without Markdown rendering, so the selection maps
+character by character to the original text. Two findings with the same label
+cannot overlap. Each fragment records its `origin`: `llm`, `editado` (edited,
+with the LLM values kept in `original`) or `manual`. Deleted LLM fragments are
+kept in `removed_fragments`. JSON and CSV exports are generated in the browser
+from the edited state; when there are edits, the CSV adds an `origen` column.
+
+## Comparison
+
+The **Compare** tab has two modes:
+
+- **Human vs LLM**: the human coding is the reference (precision, recall, F1 and
+  Cohen's kappa per sentence and code), plus embedding-based semantic matching,
+  relevance marking of LLM-only findings and a Word report.
+- **A vs B**: compares any two codings. Each side is a human CSV/XLSX file or one
+  or more JSON files exported by the tool (edited ones included). When neither
+  side carries the text, the `.txt` transcripts are loaded as well. Metrics are
+  symmetric: Cohen's kappa, observed agreement and positive specific agreement.
 
 ## Repository layout
 
@@ -33,7 +65,7 @@ of the findings detected only by the LLM.
 .
 ├── backend/    # Python + FastAPI (routes / controllers / services / models / jobs)
 ├── frontend/   # React + Vite + TypeScript
-├── samples/    # Example (synthetic) transcripts and a human-coded CSV
+├── samples/    # Example (synthetic) transcripts, human-coded CSVs and an exported analysis
 └── scripts/    # Setup and run scripts
 ```
 
@@ -110,6 +142,7 @@ npm run dev
 | GET  | `/jobs/{job_id}/csv`      | Result as CSV |
 | GET  | `/jobs/{job_id}/csv.zip`  | One CSV per document, zipped |
 | POST | `/compare`                | Compare LLM coding against human coding |
+| POST | `/compare/ab`             | Compare any two codings with symmetric metrics |
 | POST | `/human/summary`          | Summarize an imported human-coded CSV |
 | POST | `/report/docx`            | Word report of LLM-only findings |
 
@@ -135,8 +168,8 @@ Backend environment variables (all optional; see `backend/.env.example` and
 ## Tests
 
 ```bash
-cd backend && source .venv/bin/activate
-pytest
+cd backend && source .venv/bin/activate && pytest   # backend
+cd frontend && npm test                              # frontend (Vitest)
 ```
 
 ## Precision evaluation

@@ -14,6 +14,11 @@
   --control-bg: #ffffff;  /* inputs, selects, botones */
   --hover: #f0f2f5;       /* hover de botones */
   --chip: #eef0f3;        /* chips / badges */
+  /* Origen de los hallazgos (edición). */
+  --origin-edited-bg: #fdf1d6;
+  --origin-edited-fg: #8a5a00;
+  --origin-manual-bg: #dcefe0;
+  --origin-manual-fg: #1f6b30;
 }
 
 /* Tema oscuro: se activa con data-theme="dark" en <html>. */
@@ -30,6 +35,10 @@
   --control-bg: #232a31;
   --hover: #2c333b;
   --chip: #2c333b;
+  --origin-edited-bg: #4a3a12;
+  --origin-edited-fg: #f3cf7a;
+  --origin-manual-bg: #1d3d25;
+  --origin-manual-fg: #8fd6a0;
 }
 
 * {
@@ -54,6 +63,10 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+}
+.header-actions {
+  display: flex;
+  gap: 0.4rem;
 }
 .theme-toggle {
   white-space: nowrap;
@@ -583,9 +596,13 @@ button.danger.big:hover:not(:disabled) {
 }
 .justification-list li {
   display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0.25rem;
   font-size: 0.9rem;
+}
+.justification-list li.editable + li.editable {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
 }
 .viewer-text {
   white-space: pre-wrap;
@@ -776,4 +793,141 @@ button.danger.big:hover:not(:disabled) {
   border-radius: 3px;
   margin-right: 0.3rem;
   vertical-align: middle;
+}
+
+/* --- Edición de hallazgos --- */
+.viewer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.edit-toolbar {
+  display: flex;
+  gap: 0.4rem;
+}
+.edit-hint {
+  margin: 0 0 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.edit-hint.adjusting {
+  border-color: var(--primary);
+  color: var(--text);
+}
+.edit-notice {
+  margin: 0 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.dirty-note {
+  color: var(--origin-edited-fg);
+  font-weight: 600;
+}
+.viewer-text.editing {
+  cursor: text;
+}
+.origin-badge {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border-radius: 8px;
+  background: var(--chip);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.origin-badge.origin-editado {
+  background: var(--origin-edited-bg);
+  color: var(--origin-edited-fg);
+}
+.origin-badge.origin-manual {
+  background: var(--origin-manual-bg);
+  color: var(--origin-manual-fg);
+}
+.original-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+.fragment-edit,
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.fragment-quote,
+.add-quote {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.fragment-edit textarea,
+.add-form textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* --- Comparación A vs B --- */
+.compare-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.compare-mode label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.pair-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+}
+.pair-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.pair-side h4 {
+  margin: 0;
+}
+.pair-label input {
+  width: 14rem;
+  max-width: 100%;
+}
+.pair-transcripts,
+.pair-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+.pair-notes {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
+.fragment-line .swatch {
+  margin-right: 0.35rem;
+  vertical-align: -1px;
 }

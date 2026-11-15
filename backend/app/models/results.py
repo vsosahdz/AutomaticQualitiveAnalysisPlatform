@@ -11,6 +11,28 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class FragmentOrigin(str, Enum):
+    """Origen de un fragmento.
+
+    - ``llm``: producido por el análisis automático, sin cambios.
+    - ``editado``: producido por el análisis y modificado por una persona.
+    - ``manual``: agregado por una persona.
+    """
+
+    llm = "llm"
+    editado = "editado"
+    manual = "manual"
+
+
+class OriginalValues(BaseModel):
+    """Valores del análisis automático de un fragmento antes de editarlo."""
+
+    start: int = Field(..., ge=0)
+    end: int = Field(..., ge=0)
+    code: str
+    justification: str = ""
+
+
 class Fragment(BaseModel):
     """Un fragmento codificado dentro de un documento.
 
@@ -29,6 +51,13 @@ class Fragment(BaseModel):
         default_factory=list,
         description="Modelos que coincidieron (solo en análisis por consenso)",
     )
+    origin: FragmentOrigin = Field(
+        FragmentOrigin.llm,
+        description="Origen: llm (sin cambios), editado o manual",
+    )
+    original: Optional[OriginalValues] = Field(
+        None, description="Valores del análisis antes de editar (solo si origin=editado)"
+    )
 
 
 class Document(BaseModel):
@@ -41,6 +70,10 @@ class Document(BaseModel):
     )
     elapsed_seconds: float = Field(
         0.0, ge=0.0, description="Segundos que tomó codificar este documento"
+    )
+    removed_fragments: List[Fragment] = Field(
+        default_factory=list,
+        description="Fragmentos del análisis que una persona eliminó al editar",
     )
 
 

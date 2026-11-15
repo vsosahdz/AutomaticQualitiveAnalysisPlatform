@@ -1,22 +1,24 @@
-"""Ruta de comparación humano vs LLM (Fase II).
+"""Rutas de comparación de codificaciones.
 
-Recibe la codificación del LLM (JSON) y la codificación humana (archivo CSV/XLSX)
-por multipart, y devuelve las métricas léxicas y las similitudes semánticas.
+- ``POST /compare``: humano vs LLM (Fase II). Recibe la codificación del LLM (JSON)
+  y la humana (CSV/XLSX) por multipart, y devuelve métricas léxicas y similitudes.
+- ``POST /compare/ab``: dos codificaciones cualesquiera (CSV/XLSX o JSON de la
+  herramienta) con métricas simétricas.
 """
 from __future__ import annotations
 
 import json
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile, status
 from pydantic import ValidationError as PydanticValidationError
 
 from collections import Counter
 
-from app.models.comparison import ComparisonResult, HumanSummary
+from app.models.comparison import ComparisonResult, HumanSummary, PairComparisonResult
 from app.models.report import ReportRequest
 from app.models.results import Document
-from app.services import comparison, docx_report
+from app.services import coding_sources, comparison, docx_report
 from app.services.embeddings import EmbeddingError
 from app.services.human_import import parse_human_file
 
@@ -77,6 +79,61 @@ async def compare(
     # 3) Comparar (embeddings locales).
     try:
         return comparison.compare(llm_docs, human_entries)
+    except EmbeddingError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
+@router.post(
+    "/compare/ab",
+    response_model=PairComparisonResult,
+    summary="Comparar dos codificaciones cualesquiera (A vs B)",
+    description=(
+        "Cada lado (`a_files`, `b_files`) es un archivo CSV/XLSX de codificación "
+        "humana (columnas document, quotation, codes, comment) o uno o varios JSON "
+        "exportados por la herramienta (incluidos los editados por personas; se "
+        "ignoran los fragmentos eliminados). Si ningún lado trae el texto completo "
+        "de un documento, se toma de `transcripts` (TXT). Devuelve métricas "
+        "simétricas (Cohen's kappa, acuerdo observado y acuerdo específico "
+        "positivo), el diff por oración y las similitudes semánticas."
+    ),
+    responses={
+        200: {"description": "Resultado de la comparación A vs B"},
+        422: {"description": "Entrada inválida o sin documentos comparables"},
+        502: {"description": "El servicio de embeddings no respondió"},
+    },
+)
+async def compare_ab(
+    a_files: List[UploadFile] = File(..., description="Codificación A (CSV/XLSX o JSON)"),
+    b_files: List[UploadFile] = File(..., description="Codificación B (CSV/XLSX o JSON)"),
+    transcripts: Optional[List[UploadFile]] = File(
+        None, description="Transcripciones TXT (si ningún lado trae el texto)"
+    ),
+    a_label: str = Form("A", description="Nombre del lado A"),
+    b_label: str = Form("B", description="Nombre del lado B"),
+) -> PairComparisonResult:
+    """Ejecuta la comparación A vs B."""
+
+    async def read_all(files: Optional[List[UploadFile]]):
+        return [(f.filename or "", await f.read()) for f in files or []]
+
+    try:
+        side_a = coding_sources.load_side(await read_all(a_files))
+        side_b = coding_sources.load_side(await read_all(b_files))
+        texts = coding_sources.load_transcripts(await read_all(transcripts))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    documents, missing, notes = coding_sources.assemble(side_a, side_b, texts)
+    if not documents:
+        detail = "No hay documentos con texto disponible para comparar"
+        if missing:
+            detail += f" (carga la transcripción TXT de: {', '.join(missing)})"
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+
+    a_name = a_label.strip() or "A"
+    b_name = b_label.strip() or "B"
+    try:
+        return comparison.compare_ab(documents, a_name, b_name, missing, notes)
     except EmbeddingError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 

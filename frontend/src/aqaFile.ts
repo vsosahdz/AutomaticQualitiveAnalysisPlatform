@@ -4,12 +4,12 @@
 // (`aqa`) para identificar que lo generó esta herramienta, el documento con sus
 // fragmentos y el codebook usado (para reproducir los colores al recargarlo).
 import JSZip from "jszip";
-import type { Code, CodedDocument } from "./types";
+import type { Code, CodedDocument, Fragment } from "./types";
 
 /** Marca que identifica un archivo exportado por la herramienta. */
 export const AQA_KIND = "aqa-analysis-export";
-const AQA_VERSION = "0.1.0";
-const AQA_TOOL = "Análisis Cualitativo Automático";
+export const AQA_VERSION = "0.2.0";
+export const AQA_TOOL = "Análisis Cualitativo Automático";
 
 /** Estructura de un archivo de análisis exportado. */
 export interface AqaExport {
@@ -81,6 +81,19 @@ export async function exportAllDocuments(
 }
 
 /**
+ * Completa los campos que los JSON antiguos no traen: fragmentos sin origen se
+ * tratan como "llm" y documentos sin lista de eliminados, como sin eliminaciones.
+ */
+export function normalizeDocument(doc: CodedDocument): CodedDocument {
+  const withOrigin = (f: Fragment): Fragment => ({ ...f, origin: f.origin ?? "llm" });
+  return {
+    ...doc,
+    fragments: doc.fragments.map(withOrigin),
+    removed_fragments: (doc.removed_fragments ?? []).map(withOrigin),
+  };
+}
+
+/**
  * Interpreta el texto de un archivo como un análisis exportado por la herramienta.
  * @returns el objeto :class:`AqaExport` si es válido, o ``null`` si no lo es.
  */
@@ -94,7 +107,8 @@ export function parseAqaExport(text: string): AqaExport | null {
       data.document &&
       Array.isArray(data.document.fragments)
     ) {
-      return data as AqaExport;
+      const parsed = data as AqaExport;
+      return { ...parsed, document: normalizeDocument(parsed.document) };
     }
   } catch {
     // No es JSON válido.

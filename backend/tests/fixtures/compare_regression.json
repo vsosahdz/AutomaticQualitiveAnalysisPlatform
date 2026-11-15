@@ -1,0 +1,391 @@
+{
+ "llm": [
+  {
+   "name": "e1.txt",
+   "full_text": "Las trabas burocraticas nos frenaron con los permisos. Creamos alianzas con actores. El calor afecto la cosecha.",
+   "fragments": [
+    {
+     "start": 0,
+     "end": 54,
+     "code": "Barrera",
+     "quote": "Las trabas burocraticas nos frenaron con los permisos.",
+     "justification": "j0Barrera",
+     "models": [],
+     "origin": "llm",
+     "original": null
+    },
+    {
+     "start": 55,
+     "end": 84,
+     "code": "Estrategia",
+     "quote": "Creamos alianzas con actores.",
+     "justification": "j1Estrategia",
+     "models": [],
+     "origin": "llm",
+     "original": null
+    },
+    {
+     "start": 55,
+     "end": 112,
+     "code": "Facilitador",
+     "quote": "Creamos alianzas con actores. El calor afecto la cosecha.",
+     "justification": "j1Facilitador",
+     "models": [],
+     "origin": "llm",
+     "original": null
+    }
+   ],
+   "elapsed_seconds": 0.0,
+   "removed_fragments": []
+  },
+  {
+   "name": "e2.txt",
+   "full_text": "La falta de agua fue dura. Armamos una red de apoyo. Nadie nos ayudo al inicio.",
+   "fragments": [
+    {
+     "start": 0,
+     "end": 26,
+     "code": "Barrera",
+     "quote": "La falta de agua fue dura.",
+     "justification": "j0Barrera",
+     "models": [],
+     "origin": "llm",
+     "original": null
+    },
+    {
+     "start": 53,
+     "end": 79,
+     "code": "Barrera",
+     "quote": "Nadie nos ayudo al inicio.",
+     "justification": "j2Barrera",
+     "models": [],
+     "origin": "llm",
+     "original": null
+    }
+   ],
+   "elapsed_seconds": 0.0,
+   "removed_fragments": []
+  }
+ ],
+ "human": [
+  {
+   "document": "e1.txt",
+   "quotation": "trabas burocraticas",
+   "code": "Barrera",
+   "comment": "c1"
+  },
+  {
+   "document": "e1.txt",
+   "quotation": "El calor afecto la cosecha.",
+   "code": "Barrera",
+   "comment": "c2"
+  },
+  {
+   "document": "e1.txt",
+   "quotation": "texto que no existe",
+   "code": "Estrategia",
+   "comment": ""
+  },
+  {
+   "document": "e2.txt",
+   "quotation": "Armamos una red de apoyo.",
+   "code": "Estrategia",
+   "comment": "c3"
+  },
+  {
+   "document": "e2.txt",
+   "quotation": "La falta de agua",
+   "code": "Barrera",
+   "comment": ""
+  },
+  {
+   "document": "e2.txt",
+   "quotation": "La falta de agua",
+   "code": "Contexto",
+   "comment": ""
+  }
+ ],
+ "expected": {
+  "documents": [
+   {
+    "name": "e1.txt",
+    "full_text": "Las trabas burocraticas nos frenaron con los permisos. Creamos alianzas con actores. El calor afecto la cosecha.",
+    "units": [
+     {
+      "start": 0,
+      "end": 54,
+      "text": "Las trabas burocraticas nos frenaron con los permisos.",
+      "human": [
+       "Barrera"
+      ],
+      "llm": [
+       "Barrera"
+      ],
+      "status": "agree"
+     },
+     {
+      "start": 55,
+      "end": 84,
+      "text": "Creamos alianzas con actores.",
+      "human": [],
+      "llm": [
+       "Estrategia",
+       "Facilitador"
+      ],
+      "status": "only_llm"
+     },
+     {
+      "start": 85,
+      "end": 112,
+      "text": "El calor afecto la cosecha.",
+      "human": [
+       "Barrera"
+      ],
+      "llm": [
+       "Facilitador"
+      ],
+      "status": "partial"
+     }
+    ],
+    "per_code": [
+     {
+      "code": "Barrera",
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1": 0.667,
+      "kappa": 0.4
+     },
+     {
+      "code": "Estrategia",
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "kappa": 0.0
+     },
+     {
+      "code": "Facilitador",
+      "tp": 0,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "kappa": 0.0
+     }
+    ],
+    "overall": {
+     "precision": 0.25,
+     "recall": 0.5,
+     "f1": 0.333,
+     "kappa": 0.053
+    },
+    "llm_fragments": [
+     {
+      "code": "Barrera",
+      "quote": "Las trabas burocraticas nos frenaron con los permisos.",
+      "start": 0,
+      "end": 54,
+      "max_similarity": 1.0,
+      "justification": "j0Barrera",
+      "comment": "",
+      "best_match_quote": "trabas burocraticas",
+      "best_match_code": "Barrera"
+     },
+     {
+      "code": "Estrategia",
+      "quote": "Creamos alianzas con actores.",
+      "start": 55,
+      "end": 84,
+      "max_similarity": 0.1,
+      "justification": "j1Estrategia",
+      "comment": "",
+      "best_match_quote": "El calor afecto la cosecha.",
+      "best_match_code": "Barrera"
+     },
+     {
+      "code": "Facilitador",
+      "quote": "Creamos alianzas con actores. El calor afecto la cosecha.",
+      "start": 55,
+      "end": 112,
+      "max_similarity": 0.74,
+      "justification": "j1Facilitador",
+      "comment": "",
+      "best_match_quote": "El calor afecto la cosecha.",
+      "best_match_code": "Barrera"
+     }
+    ],
+    "human_fragments": [
+     {
+      "code": "Barrera",
+      "quote": "trabas burocraticas",
+      "start": 4,
+      "end": 23,
+      "max_similarity": 1.0,
+      "justification": "",
+      "comment": "c1",
+      "best_match_quote": "Las trabas burocraticas nos frenaron con los permisos.",
+      "best_match_code": "Barrera"
+     },
+     {
+      "code": "Barrera",
+      "quote": "El calor afecto la cosecha.",
+      "start": 85,
+      "end": 112,
+      "max_similarity": 0.74,
+      "justification": "",
+      "comment": "c2",
+      "best_match_quote": "Creamos alianzas con actores. El calor afecto la cosecha.",
+      "best_match_code": "Facilitador"
+     }
+    ]
+   },
+   {
+    "name": "e2.txt",
+    "full_text": "La falta de agua fue dura. Armamos una red de apoyo. Nadie nos ayudo al inicio.",
+    "units": [
+     {
+      "start": 0,
+      "end": 26,
+      "text": "La falta de agua fue dura.",
+      "human": [
+       "Barrera",
+       "Contexto"
+      ],
+      "llm": [
+       "Barrera"
+      ],
+      "status": "partial"
+     },
+     {
+      "start": 27,
+      "end": 52,
+      "text": "Armamos una red de apoyo.",
+      "human": [
+       "Estrategia"
+      ],
+      "llm": [],
+      "status": "only_human"
+     },
+     {
+      "start": 53,
+      "end": 79,
+      "text": "Nadie nos ayudo al inicio.",
+      "human": [],
+      "llm": [
+       "Barrera"
+      ],
+      "status": "only_llm"
+     }
+    ],
+    "per_code": [
+     {
+      "code": "Barrera",
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "kappa": 0.4
+     },
+     {
+      "code": "Contexto",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "kappa": 0.0
+     },
+     {
+      "code": "Estrategia",
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "kappa": 0.0
+     }
+    ],
+    "overall": {
+     "precision": 0.5,
+     "recall": 0.333,
+     "f1": 0.4,
+     "kappa": 0.182
+    },
+    "llm_fragments": [
+     {
+      "code": "Barrera",
+      "quote": "La falta de agua fue dura.",
+      "start": 0,
+      "end": 26,
+      "max_similarity": 1.0,
+      "justification": "j0Barrera",
+      "comment": "",
+      "best_match_quote": "La falta de agua",
+      "best_match_code": "Contexto"
+     },
+     {
+      "code": "Barrera",
+      "quote": "Nadie nos ayudo al inicio.",
+      "start": 53,
+      "end": 79,
+      "max_similarity": 1.0,
+      "justification": "j2Barrera",
+      "comment": "",
+      "best_match_quote": "La falta de agua",
+      "best_match_code": "Contexto"
+     }
+    ],
+    "human_fragments": [
+     {
+      "code": "Estrategia",
+      "quote": "Armamos una red de apoyo.",
+      "start": 27,
+      "end": 52,
+      "max_similarity": 0.1,
+      "justification": "",
+      "comment": "c3",
+      "best_match_quote": "Nadie nos ayudo al inicio.",
+      "best_match_code": "Barrera"
+     },
+     {
+      "code": "Barrera",
+      "quote": "La falta de agua",
+      "start": 0,
+      "end": 16,
+      "max_similarity": 1.0,
+      "justification": "",
+      "comment": "",
+      "best_match_quote": "Nadie nos ayudo al inicio.",
+      "best_match_code": "Barrera"
+     },
+     {
+      "code": "Contexto",
+      "quote": "La falta de agua",
+      "start": 0,
+      "end": 16,
+      "max_similarity": 1.0,
+      "justification": "",
+      "comment": "",
+      "best_match_quote": "Nadie nos ayudo al inicio.",
+      "best_match_code": "Barrera"
+     }
+    ]
+   }
+  ],
+  "embedding_model": "bge-m3:latest",
+  "default_threshold": 0.7,
+  "unmapped": [
+   "e1.txt: texto que no existe"
+  ]
+ }
+}
