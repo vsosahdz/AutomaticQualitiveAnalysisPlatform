@@ -12,6 +12,8 @@ in a color-highlighted viewer and can be exported as CSV.
 
 ## How it works
 
+![AQA functional block diagram](docs/aqa-block-diagram.png)
+
 1. **Segmentation.** Each transcript is split into sentence units with exact
    character offsets (`backend/app/services/segmentation.py`).
 2. **Windowing.** Long documents are processed in overlapping windows
@@ -64,6 +66,7 @@ The **Compare** tab has two modes:
 ```
 .
 ├── backend/    # Python + FastAPI (routes / controllers / services / models / jobs)
+├── docs/       # Block diagram
 ├── frontend/   # React + Vite + TypeScript
 ├── samples/    # Example (synthetic) transcripts, human-coded CSVs and an exported analysis
 └── scripts/    # Setup and run scripts
