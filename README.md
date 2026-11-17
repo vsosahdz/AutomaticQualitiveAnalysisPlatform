@@ -187,6 +187,13 @@ OLLAMA_HOST=http://localhost:11434 OLLAMA_MODEL=qwen2.5:14b    python eval_preci
 OLLAMA_HOST=http://localhost:11434 OLLAMA_MODEL=qwen2.5:latest python eval_precision.py
 ```
 
+## Citation
+
+If you use AQA, please cite it with its DOI:
+[10.5281/zenodo.24299224](https://doi.org/10.5281/zenodo.24299224) (all versions)
+or [10.5281/zenodo.24299225](https://doi.org/10.5281/zenodo.24299225) (version 0.2.0).
+Authors and metadata are in [`CITATION.cff`](CITATION.cff).
+
 ## License
 
 Released under the [PolyForm Noncommercial License 1.0.0](LICENSE). Use for any

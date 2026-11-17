@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Automatic Qualitative Analysis Platform (AQA)"
+abstract: >-
+  Web application for LLM-assisted deductive coding of Spanish-language
+  interview transcripts with locally run models, exact sentence-level
+  quotations, findings editing with provenance, and built-in comparison
+  against human coding.
+authors:
+  - given-names: "Víctor Adrián"
+    family-names: "Sosa Hernández"
+    affiliation: "Tecnológico de Monterrey"
+    orcid: "https://orcid.org/0000-0002-1099-8148"
+  - given-names: "Andrea"
+    family-names: "Torres Calderón"
+    affiliation: "Tecnológico de Monterrey"
+    orcid: "https://orcid.org/0009-0002-9228-9798"
+  - given-names: "Paola Abril"
+    family-names: "Campos Rivera"
+    affiliation: "Tecnológico de Monterrey"
+    orcid: "https://orcid.org/0000-0002-9229-8355"
+  - given-names: "Esteban"
+    family-names: "Castillo Juárez"
+    affiliation: "Tecnológico de Monterrey"
+    orcid: "https://orcid.org/0000-0001-7781-3999"
+version: "0.2.0"
+date-released: "2026-11-17"
+doi: "10.5281/zenodo.24299224"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.24299224"
+    description: "All versions (resolves to the latest)"
+  - type: doi
+    value: "10.5281/zenodo.24299225"
+    description: "Version 0.2.0"
+repository-code: "https://github.com/vsosahdz/AutomaticQualitiveAnalysisPlatform"
+license: PolyForm-Noncommercial-1.0.0
+keywords:
+  - qualitative analysis
+  - deductive coding
+  - large language models
+  - Ollama
+  - intercoder agreement
