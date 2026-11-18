@@ -199,7 +199,9 @@ Authors and metadata are in [`CITATION.cff`](CITATION.cff).
 
 ## License
 
+Copyright (c) 2026 Instituto Tecnológico y de Estudios Superiores de Monterrey.
+
 Released under the [PolyForm Noncommercial License 1.0.0](LICENSE). Use for any
 noncommercial purpose is permitted, including research, study and use by
 educational institutions. Commercial use requires a separate license from the
-copyright holder.
+copyright holder, Tecnológico de Monterrey.
